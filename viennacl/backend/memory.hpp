@@ -97,6 +97,12 @@ namespace backend
         handle.ram_handle() = cpu_ram::memory_create(size_in_bytes, host_ptr);
         handle.raw_size(size_in_bytes);
         break;
+#ifdef VIENNACL_WITH_HSA
+      case HSA_MEMORY:
+    	  handle.hsa_handle() = cpu_ram::memory_create(size_in_bytes,host_ptr);
+    	  handle.raw_size(size_in_bytes);
+    	break;
+#endif
 #ifdef VIENNACL_WITH_OPENCL
       case OPENCL_MEMORY:
         handle.opencl_handle().context(ctx.opencl_context());
@@ -152,6 +158,11 @@ namespace backend
       case MAIN_MEMORY:
         cpu_ram::memory_copy(src_buffer.ram_handle(), dst_buffer.ram_handle(), src_offset, dst_offset, bytes_to_copy);
         break;
+#ifdef VIENNACL_WITH_HSA
+      case HSA_MEMORY:
+        cpu_ram::memory_copy(src_buffer.hsa_handle(), dst_buffer.hsa_handle(), src_offset, dst_offset, bytes_to_copy);
+        break;
+#endif
 #ifdef VIENNACL_WITH_OPENCL
       case OPENCL_MEMORY:
         opencl::memory_copy(src_buffer.opencl_handle(), dst_buffer.opencl_handle(), src_offset, dst_offset, bytes_to_copy);
@@ -186,6 +197,13 @@ namespace backend
       dst_buffer.ram_handle() = src_buffer.ram_handle();
       dst_buffer.raw_size(src_buffer.raw_size());
       break;
+#ifdef VIENNACL_WITH_HSA
+    case HSA_MEMORY:
+      dst_buffer.switch_active_handle_id(src_buffer.get_active_handle_id());
+      dst_buffer.hsa_handle() = src_buffer.hsa_handle();
+      dst_buffer.raw_size(src_buffer.raw_size());
+      break;
+#endif
 #ifdef VIENNACL_WITH_OPENCL
     case OPENCL_MEMORY:
       dst_buffer.switch_active_handle_id(src_buffer.get_active_handle_id());
@@ -230,6 +248,11 @@ namespace backend
       case MAIN_MEMORY:
         cpu_ram::memory_write(dst_buffer.ram_handle(), dst_offset, bytes_to_write, ptr, async);
         break;
+#ifdef VIENNACL_WITH_HSA
+     case HSA_MEMORY:
+        cpu_ram::memory_write(dst_buffer.hsa_handle(), dst_offset, bytes_to_write, ptr, async);
+        break;
+#endif
 #ifdef VIENNACL_WITH_OPENCL
       case OPENCL_MEMORY:
         opencl::memory_write(dst_buffer.opencl_handle(), dst_offset, bytes_to_write, ptr, async);
@@ -273,6 +296,11 @@ namespace backend
       case MAIN_MEMORY:
         cpu_ram::memory_read(src_buffer.ram_handle(), src_offset, bytes_to_read, ptr, async);
         break;
+#ifdef VIENNACL_WTIH_HSA
+      case HSA_MEMORY:
+    	cpu_ram::memory_read(src_buffer.hsa_handle(), src_offset, bytes_to_read, ptr, async);
+    	break;
+#endif
 #ifdef VIENNACL_WITH_OPENCL
       case OPENCL_MEMORY:
         opencl::memory_read(src_buffer.opencl_handle(), src_offset, bytes_to_read, ptr, async);
@@ -389,6 +417,7 @@ namespace backend
     }
     else //no data conversion required
     {
+
       if (handle.get_active_handle_id() == MAIN_MEMORY) //we can access the existing data directly
       {
         switch (new_ctx.memory_type())
@@ -399,10 +428,16 @@ namespace backend
           handle.opencl_handle() = opencl::memory_create(handle.opencl_handle().context(), handle.raw_size(), handle.ram_handle().get());
           break;
 #endif
+
 #ifdef VIENNACL_WITH_CUDA
         case CUDA_MEMORY:
           handle.cuda_handle() = cuda::memory_create(handle.raw_size(), handle.ram_handle().get());
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case HSA_MEMORY:
+        	 handle.hsa_handle() = handle.ram_handle();
+        	break;
 #endif
         case MAIN_MEMORY:
         default:
@@ -427,13 +462,19 @@ namespace backend
           cuda::memory_create(handle.cuda_handle(), handle.raw_size(), &(buffer[0]));
           break;
 #endif
+#ifdef VIENNA_WITH_HSA
+        case HSA_MEMORY:
+          handle.hsa_handle() = cpu_ram::memory_create(handle.raw_size());
+          opencl::memory_read(handle.opencl_handle(), 0, handle.raw_size(), handle.hsa_handle().get());
+          break;
+#endif
         default:
           throw "Invalid destination domain";
         }
       }
 #endif
 #ifdef VIENNACL_WITH_CUDA
-      else //CUDA_MEMORY
+      else if (handle.get_active_handle_id() == CUDA_MEMORY)//CUDA_MEMORY
       {
         std::vector<DataType> buffer;
 
@@ -451,12 +492,48 @@ namespace backend
           handle.opencl_handle() = opencl::memory_create(handle.raw_size(), &(buffer[0]));
           break;
 #endif
+#ifdef VIENNA_WITH_HSA
+        case HSA_MEMORY:
+          handle.hsa_handle() = cpu_ram::memory_create(handle.raw_size());
+          cuda::memory_read(handle.opencl_handle(), 0, handle.raw_size(), handle.hsa_handle().get());
+          break;
+#endif
+
         default:
           throw "Unsupported source memory domain";
         }
       }
 #endif
+#ifdef VIENNACL_WITH_HSA
+      else if (handle.get_active_handle_id() == HSA_MEMORY)
+      {
+    	  std::vector<DataType> buffer;
+    	  switch (new_ctx.memory_type())
+    	  {
+			  case MAIN_MEMORY:
+				  handle.ram_handle() = handle.hsa_handle();
+				  break;
+#ifdef VIENNACL_WITH_OPENCL
+			case OPENCL_MEMORY:
+			  handle.opencl_handle().context(new_ctx.opencl_context());
+			  handle.opencl_handle() = opencl::memory_create(handle.opencl_handle().context(), handle.raw_size(), handle.hsa_handle().get());
+			  break;
+#endif
 
+#ifdef VIENNACL_WITH_CUDA
+			case CUDA_MEMORY:
+			  handle.cuda_handle() = cuda::memory_create(handle.raw_size(), handle.hsa_handle().get());
+			  break;
+#endif
+		        default:
+		          throw "Unsupported source memory domain";
+
+    	  }
+
+      }
+#endif
+      else
+    	  throw "Unsupported source memory domain";
       // everything succeeded so far, now switch to new domain:
       handle.switch_active_handle_id(new_ctx.memory_type());
 
@@ -488,11 +565,19 @@ namespace backend
       DataType const * src_data;
       switch (handle_src.get_active_handle_id())
       {
+
       case MAIN_MEMORY:
         src_data = reinterpret_cast<DataType const *>(handle_src.ram_handle().get());
         for (vcl_size_t i=0; i<buffer_dst.size(); ++i)
           buffer_dst.set(i, src_data[i]);
         break;
+#ifdef VIENNACL_WITH_HSA
+      case HSA_MEMORY:
+        src_data = reinterpret_cast<DataType const *>(handle_src.hsa_handle().get());
+        for (vcl_size_t i=0; i<buffer_dst.size(); ++i)
+          buffer_dst.set(i, src_data[i]);
+        break;
+#endif
 
 #ifdef VIENNACL_WITH_OPENCL
       case OPENCL_MEMORY:
@@ -531,10 +616,12 @@ namespace backend
 
       switch (handle_src.get_active_handle_id())
       {
+
       case MAIN_MEMORY:
         switch (handle_dst.get_active_handle_id())
         {
         case MAIN_MEMORY:
+        case HSA_MEMORY:
         case OPENCL_MEMORY:
         case CUDA_MEMORY:
           if (handle_dst.raw_size() == handle_src.raw_size())
@@ -548,6 +635,25 @@ namespace backend
         }
         break;
 
+#ifdef VIENNACL_WITH_HSA
+        case HSA_MEMORY:
+               switch (handle_dst.get_active_handle_id())
+               {
+               case MAIN_MEMORY:
+               case OPENCL_MEMORY:
+               case CUDA_MEMORY:
+               case HSA_MEMORY:
+                 if (handle_dst.raw_size() == handle_src.raw_size())
+                   viennacl::backend::memory_write(handle_dst, 0, handle_src.raw_size(), handle_src.hsa_handle().get());
+                 else
+                   viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst), handle_src.hsa_handle().get());
+                 break;
+
+               default:
+                 throw "unsupported destination memory domain";
+               }
+               break;
+#endif
       case OPENCL_MEMORY:
         switch (handle_dst.get_active_handle_id())
         {
@@ -556,7 +662,13 @@ namespace backend
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
           viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.ram_handle().get());
           break;
-
+#ifdef VIENNACL_WITH_HSA
+        case HSA_MEMORY:
+          if (handle_dst.raw_size() != handle_src.raw_size())
+            viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
+          viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.hsa_handle().get());
+          break;
+#endif
         case OPENCL_MEMORY:
           if (handle_dst.raw_size() != handle_src.raw_size())
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
@@ -584,6 +696,11 @@ namespace backend
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
           viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.ram_handle().get());
           break;
+        case HSA_MEMORY:
+		   if (handle_dst.raw_size() != handle_src.raw_size())
+			 viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
+		   viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.hsa_handle().get());
+		   break;
 
         case OPENCL_MEMORY:
           if (handle_dst.raw_size() != handle_src.raw_size())

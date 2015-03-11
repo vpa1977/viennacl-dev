@@ -397,6 +397,7 @@ public:
   {
     if (!max_compute_units_valid_)
     {
+
       cl_int err = clGetDeviceInfo(device_, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), static_cast<void *>(&max_compute_units_), NULL);
       VIENNACL_ERR_CHECK(err);
       max_compute_units_valid_ = true;

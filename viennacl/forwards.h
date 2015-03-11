@@ -347,6 +347,7 @@ namespace viennacl
     , MAIN_MEMORY
     , OPENCL_MEMORY
     , CUDA_MEMORY
+	, HSA_MEMORY
   };
 
   namespace backend
