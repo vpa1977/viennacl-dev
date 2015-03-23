@@ -56,7 +56,7 @@ class context
 
 public:
   context() : initialized_(false),
-    device_type_(HSA_DEVICE_TYPE_CPU),
+    device_type_(HSA_DEVICE_TYPE_GPU),
     current_device_id_(0),
     default_device_num_(1),
     pf_index_(0),
@@ -247,13 +247,15 @@ public:
     std::cout << "ViennaCL: Adding new queue for device " << dev << " to context " << h_ << std::endl;
 #endif
     size_t queue_size = 0;
-    hsa_agent_get_info(dev, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
+    hsa_status_t status = hsa_agent_get_info(dev, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
+    if (status != HSA_STATUS_SUCCESS)
+    	throw std::runtime_error("unable to get queue size");
 
     hsa_queue_t* command_queue;
     hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_MULTI, NULL, NULL, &command_queue);
 
-    viennacl::hsa::handle<hsa_queue_s*> temp(command_queue, *this);
-    queues_[dev].push_back(viennacl::hsa::command_queue(temp));
+    viennacl::hsa::command_queue queue(viennacl::hsa::handle<hsa_queue_t*>(command_queue, *this));
+    queues_[dev].push_back(queue);
   }
 
   /** @brief Adds a queue for the given device to the context */
@@ -690,7 +692,7 @@ inline viennacl::hsa::kernel & viennacl::hsa::program::get_kernel(std::string co
        it != kernels_.end();
        ++it)
   {
-    if ((*it)->name() == name)
+    if (((*it)->name() == name) || ((*it)->name() == "&__OpenCL_"+name+"_kernel"))
       return **it;
   }
   std::cerr << "ViennaCL: FATAL ERROR: Could not find kernel '" << name << "' from program '" << name_ << "'" << std::endl;

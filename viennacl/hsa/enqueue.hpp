@@ -94,7 +94,9 @@ void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 /** @brief Convenience function that enqueues the provided kernel into the first queue of the currently active device in the currently active context */
 template<typename KernelType>
 void enqueue(KernelType & k) {
-	enqueue(k, k.context().get_queue());
+	const context& ctx = k.context();
+	const command_queue& cmd = ctx.get_queue();
+	enqueue(k, cmd);
 }
 
 inline void enqueue(viennacl::device_specific::custom_operation & op,

@@ -174,7 +174,9 @@ public:
 			h_(0), p_context_(NULL) {
 	}
 	handle(const OCL_TYPE something, const viennacl::hsa::context & c) :
-			h_(new wrapper<OCL_TYPE>(something)), p_context_(&c) {
+			h_(new wrapper<OCL_TYPE>(something)), p_context_(&c)
+	{
+		inc();
 	}
 	handle(const handle & other) :
 			h_(other.h_), p_context_(other.p_context_) {
@@ -190,7 +192,7 @@ public:
 	handle & operator=(const handle & other) {
 		if (h_ != 0)
 			dec();
-		h_ = new wrapper<OCL_TYPE>(other.h_->m_x);
+		h_ = other.h_;
 		p_context_ = other.p_context_;
 		inc();
 		return *this;
@@ -208,7 +210,7 @@ public:
 	handle & operator=(std::pair<OCL_TYPE, cl_context> p) {
 		if (h_ != 0)
 			dec();
-		h_ = new wrapper<OCL_TYPE>(p.first);
+		h_ = p.first;
 		p_context_ = p.second;
 		return *this;
 	}
