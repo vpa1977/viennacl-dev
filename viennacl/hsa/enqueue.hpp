@@ -2,145 +2,108 @@
 #define VIENNACL_HSA_ENQUEUE_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
-                            Institute for Analysis and Scientific Computing,
-                            TU Wien.
-   Portions of this software are copyright by UChicago Argonne, LLC.
+ Copyright (c) 2010-2014, Institute for Microelectronics,
+ Institute for Analysis and Scientific Computing,
+ TU Wien.
+ Portions of this software are copyright by UChicago Argonne, LLC.
 
-                            -----------------
-                  ViennaCL - The Vienna Computing Library
-                            -----------------
+ -----------------
+ ViennaCL - The Vienna Computing Library
+ -----------------
 
-   Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
+ Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+ (A list of authors and contributors can be found in the PDF manual)
 
-   License:         MIT (X11), see file LICENSE in the base directory
-============================================================================= */
+ License:         MIT (X11), see file LICENSE in the base directory
+ ============================================================================= */
 
 /** @file viennacl/hsa/enqueue.hpp
-    @brief Enqueues kernels into command queues
-*/
-
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#else
-#include <CL/cl.h>
-#endif
+ @brief Enqueues kernels into command queues
+ */
 
 #include "viennacl/hsa/backend.hpp"
 #include "viennacl/hsa/kernel.hpp"
 #include "viennacl/hsa/command_queue.hpp"
 #include "viennacl/hsa/context.hpp"
 
-namespace viennacl
-{
+namespace viennacl {
 
-namespace device_specific
-{
-  class custom_operation;
-  void enqueue_custom_op(viennacl::device_specific::custom_operation & op, viennacl::hsa::command_queue const & queue);
+namespace device_specific {
+class custom_operation;
+void enqueue_custom_op(viennacl::device_specific::custom_operation & op,
+		viennacl::hsa::command_queue const & queue);
 }
 
-namespace hsa
-{
+namespace hsa {
 
 /** @brief Enqueues a kernel in the provided queue */
 template<typename KernelType>
-void enqueue(KernelType & k, viennacl::hsa::command_queue const & queue)
-{
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-  cl_event event;
-#endif
+void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 
-  // 1D kernel:
-  if (k.local_work_size(1) == 0)
-  {
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-    std::cout << "ViennaCL: Starting 1D-kernel '" << k.name() << "'..." << std::endl;
-    std::cout << "ViennaCL: Global work size: '"  << k.global_work_size() << "'..." << std::endl;
-    std::cout << "ViennaCL: Local work size: '"   << k.local_work_size() << "'..." << std::endl;
-#endif
+	// get command queue from context
+	hsa_queue_t* command_queue = queue.handle().get();
+	hsa_dispatch_packet_t aql;
+	// create a dispatch packet
+	memset(&aql, 0, sizeof(aql));
 
-    vcl_size_t tmp_global = k.global_work_size();
-    vcl_size_t tmp_local = k.local_work_size();
+	// setup dispatch sizes
+	aql.dimensions = 1;
+	aql.workgroup_size_x = kernel.local_work_size(0);
+	aql.grid_size_x = kernel.global_work_size(0);
+	if (kernel.global_work_size(1) >= 1) {
+		++aql.dimensions;
+		aql.grid_size_y = kernel.global_work_size(1);
+		aql.workgroup_size_y = kernel.local_work_size(1);
+	}
+	if (kernel.global_work_size(2) >= 1) {
+		++aql.dimensions;
+		aql.grid_size_z = kernel.global_work_size(2);
+		aql.workgroup_size_z = kernel.local_work_size(2);
+	}
 
-    cl_int err;
-    if (tmp_global == 1 && tmp_local == 1)
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-      err = clEnqueueTask(queue.handle().get(), k.handle().get(), 0, NULL, &event);
-#else
-      err = clEnqueueTask(queue.handle().get(), k.handle().get(), 0, NULL, NULL);
-#endif
-    else
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, &tmp_local, 0, NULL, &event);
-#else
-      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, &tmp_local, 0, NULL, NULL);
-#endif
+	// set dispatch fences
+	aql.header.type = HSA_PACKET_TYPE_DISPATCH;
+	aql.header.acquire_fence_scope = 2;
+	aql.header.release_fence_scope = 2;
+	aql.header.barrier = 1;
 
-    if (err != CL_SUCCESS)
-    {
-      std::cerr << "ViennaCL: FATAL ERROR: Kernel start failed for '" << k.name() << "'." << std::endl;
-      std::cerr << "ViennaCL: Smaller work sizes could not solve the problem. " << std::endl;
-      VIENNACL_ERR_CHECK(err);
-    }
-  }
-  else //2D or 3D kernel
-  {
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-    std::cout << "ViennaCL: Starting 2D/3D-kernel '" << k.name() << "'..." << std::endl;
-    std::cout << "ViennaCL: Global work size: '"  << k.global_work_size(0) << ", " << k.global_work_size(1) << ", " << k.global_work_size(2) << "'..." << std::endl;
-    std::cout << "ViennaCL: Local work size: '"   << k.local_work_size(0) << ", " << k.local_work_size(1) << ", " << k.local_work_size(2) << "'..." << std::endl;
-#endif
+	// bind kernel code
+	aql.kernel_object_address = kernel.handle_->code.handle;
+	kernel.arg_buffer_.finalize(kernel.handle_);
+	aql.kernarg_address = (uint64_t)kernel.arg_buffer_.kernargs();
+	// Initialize memory resources needed to execute
+	aql.group_segment_size = kernel.handle_->workgroup_group_segment_byte_size
+			+ kernel.arg_buffer_.dynamic_local_size();
+	aql.private_segment_size =
+			kernel.handle_->workitem_private_segment_byte_size;
 
-    vcl_size_t tmp_global[3];
-    tmp_global[0] = k.global_work_size(0);
-    tmp_global[1] = k.global_work_size(1);
-    tmp_global[2] = k.global_work_size(2);
+	// write packet
+	uint32_t queueMask = command_queue->size - 1;
+	uint64_t index = hsa_queue_load_write_index_relaxed(command_queue);
+	((hsa_dispatch_packet_t*) (command_queue->base_address))[index & queueMask] =
+			aql;
+	hsa_queue_store_write_index_relaxed(command_queue, index + 1);
 
-    vcl_size_t tmp_local[3];
-    tmp_local[0] = k.local_work_size(0);
-    tmp_local[1] = k.local_work_size(1);
-    tmp_local[2] = k.local_work_size(2);
+	//printf("ring door bell\n");
 
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-    cl_int err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), (tmp_global[2] == 0) ? 2 : 3, NULL, tmp_global, tmp_local, 0, NULL, &event);
-#else
-    cl_int err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), (tmp_global[2] == 0) ? 2 : 3, NULL, tmp_global, tmp_local, 0, NULL, NULL);
-#endif
-    if (err != CL_SUCCESS)
-    {
-      //could not start kernel with any parameters
-      std::cerr << "ViennaCL: FATAL ERROR: Kernel start failed for '" << k.name() << "'." << std::endl;
-      VIENNACL_ERR_CHECK(err);
-    }
-  }
-
-#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-  queue.finish();
-  cl_int execution_status;
-  clGetEventInfo(event, CL_EVENT_COMMAND_EXECUTION_STATUS, sizeof(cl_int), &execution_status, NULL);
-  std::cout << "ViennaCL: Kernel " << k.name() << " finished with status " << execution_status << "!" << std::endl;
-#endif
+	// Ring door bell
+	hsa_signal_store_relaxed(command_queue->doorbell_signal, index + 1);
 } //enqueue()
-
 
 /** @brief Convenience function that enqueues the provided kernel into the first queue of the currently active device in the currently active context */
 template<typename KernelType>
-void enqueue(KernelType & k)
-{
-  enqueue(k, k.context().get_queue());
+void enqueue(KernelType & k) {
+	enqueue(k, k.context().get_queue());
 }
 
-inline void enqueue(viennacl::device_specific::custom_operation & op, viennacl::hsa::command_queue const & queue)
-{
-  device_specific::enqueue_custom_op(op,queue);
+inline void enqueue(viennacl::device_specific::custom_operation & op,
+		viennacl::hsa::command_queue const & queue) {
+	device_specific::enqueue_custom_op(op, queue);
 }
 
-inline void enqueue(viennacl::device_specific::custom_operation & op)
-{
-  enqueue(op, viennacl::hsa::current_context().get_queue());
+inline void enqueue(viennacl::device_specific::custom_operation & op) {
+	enqueue(op, viennacl::hsa::current_context().get_queue());
 }
 
 } // namespace hsa

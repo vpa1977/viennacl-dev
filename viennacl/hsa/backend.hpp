@@ -136,7 +136,7 @@ public:
            qit != queues.end();
            ++qit)
       {
-        std::vector<cl_command_queue> const & queues_for_device = qit->second;
+        std::vector<hsa_queue_t*> const & queues_for_device = qit->second;
         for (vcl_size_t j=0; j<queues_for_device.size(); ++j)
           contexts_[i].add_queue(qit->first, queues_for_device[j]);
       }
@@ -152,12 +152,12 @@ public:
     * @param devices A vector of OpenCL device-IDs that should be added to the context
     * @param queue   One queue per device
     */
-  static void setup_context(long i, cl_context c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queue)
+  static void setup_context(long i, hsa_environment c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queue)
   {
     assert(devices.size() == queue.size() && bool("ViennaCL expects one queue per device!"));
 
     //wrap queue vector into map
-    std::map< cl_device_id, std::vector<cl_command_queue> > queues_map;
+    std::map< hsa_agent_t, std::vector<hsa_queue_t*> > queues_map;
     for (vcl_size_t j = 0; j<devices.size(); ++j)
       queues_map[devices[j]].push_back(queue[j]);
 
@@ -190,7 +190,7 @@ public:
   /** @brief Sets the context device type */
   static void set_context_platform_index(long i, vcl_size_t pf_index)
   {
-    contexts_[i].platform_index(pf_index);
+    //contexts_[i].platform_index(pf_index);
   }
 
 private:
@@ -246,8 +246,8 @@ inline void setup_context(long i,
 /** @brief Convenience function for setting up a context in ViennaCL from an existing OpenCL context */
 inline void setup_context(long i,
                           hsa_environment c,
-                          std::vector<cl_device_id> const & devices,
-                          std::map< cl_device_id, std::vector<cl_command_queue> > const & queues)
+                          std::vector<hsa_agent_t> const & devices,
+                          std::map< hsa_agent_t, std::vector<hsa_queue_t*> > const & queues)
 {
   viennacl::hsa::backend<>::setup_context(i, c, devices, queues);
 }
@@ -259,17 +259,17 @@ inline void setup_context(long i, hsa_environment c, std::vector<hsa_agent_t> co
 }
 
 /** @brief Convenience function for setting up a context in ViennaCL from an existing OpenCL context */
-inline void setup_context(long i, cl_context c, cl_device_id d, cl_command_queue q)
+inline void setup_context(long i, hsa_environment c, hsa_agent_t d, hsa_queue_t* q)
 {
-  std::vector<cl_device_id> devices(1);
-  std::vector<cl_command_queue> queues(1);
+  std::vector<hsa_agent_t> devices(1);
+  std::vector<hsa_queue_t*> queues(1);
   devices[0] = d;
   queues[0] = q;
   viennacl::hsa::backend<>::setup_context(i, c, devices, queues);
 }
 
 /** @brief Convenience function for setting the default device type for a context */
-inline void set_context_device_type(long i, cl_device_type dev_type)
+inline void set_context_device_type(long i, hsa_device_type_t dev_type)
 {
   viennacl::hsa::backend<>::set_context_device_type(i, dev_type);
 }
@@ -277,26 +277,15 @@ inline void set_context_device_type(long i, cl_device_type dev_type)
 /** @brief Convenience function for setting the default device type for a context to GPUs */
 inline void set_context_device_type(long i, viennacl::hsa::gpu_tag)
 {
-  set_context_device_type(i, CL_DEVICE_TYPE_GPU);
+  set_context_device_type(i, HSA_DEVICE_TYPE_GPU);
 }
 
 /** @brief Convenience function for setting the default device type for a context to CPUs */
 inline void set_context_device_type(long i, viennacl::hsa::cpu_tag)
 {
-  set_context_device_type(i, CL_DEVICE_TYPE_CPU);
+  set_context_device_type(i, HSA_DEVICE_TYPE_CPU);
 }
 
-/** @brief Convenience function for setting the default device type for a context to the default OpenCL device type */
-inline void set_context_device_type(long i, viennacl::hsa::default_tag)
-{
-  set_context_device_type(i, CL_DEVICE_TYPE_DEFAULT);
-}
-
-/** @brief Convenience function for setting the default device type for a context to accelerators */
-inline void set_context_device_type(long i, viennacl::hsa::accelerator_tag)
-{
-  set_context_device_type(i, CL_DEVICE_TYPE_ACCELERATOR);
-}
 
 /** @brief Convenience function for setting the number of default devices per context */
 inline void set_context_device_num(long i, vcl_size_t num)
@@ -329,7 +318,7 @@ inline viennacl::hsa::command_queue & get_queue(viennacl::hsa::device d, unsigne
 }
 
 /** @brief Convenience function for getting the queue for a particular device in the current active context */
-inline viennacl::hsa::command_queue & get_queue(cl_device_id dev_id, unsigned int queue_id = 0)
+inline viennacl::hsa::command_queue & get_queue(hsa_agent_t dev_id, unsigned int queue_id = 0)
 {
   return viennacl::hsa::current_context().get_queue(dev_id, queue_id);
 }
