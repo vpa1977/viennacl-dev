@@ -42,6 +42,10 @@
 #include "viennacl/backend/cuda.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/hsa/backend.hpp"
+#endif
+
 
 namespace viennacl
 {
