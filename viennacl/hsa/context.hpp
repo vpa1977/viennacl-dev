@@ -428,6 +428,8 @@ public:
     programs_.push_back(tools::shared_ptr<hsa::program>(new hsa::program(temp, *this, prog_name)));
 
     viennacl::hsa::program & prog = *programs_.back();
+    //temporary - use single hsa device for tests.
+    finalize(current_device().id(), prog);
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Stored program '" << programs_.back()->name() << "' in context " << h_ << std::endl;
@@ -665,6 +667,61 @@ private:
     std::cout << "ViennaCL: Initialization of new ViennaCL context done." << std::endl;
 #endif
   }
+
+  hsa_status_t finalize(hsa_agent_t device, program& p)
+  {
+	  hsa_status_t status = HSA_STATUS_SUCCESS;
+      hsa_ext_program_handle_t hsa_program;
+      hsa_program.handle = 0;
+	    //Create hsa program.
+	    status = hsa_ext_program_create(&device, 1, HSA_EXT_BRIG_MACHINE_LARGE, HSA_EXT_BRIG_PROFILE_FULL, &hsa_program);
+
+	    //Add BRIG module to hsa program.
+	    hsa_ext_brig_module_handle_t module;
+	    status = hsa_ext_add_module(hsa_program, p.handle().get().brig_module_, &module);
+	    // entry offset into the code section.
+	    std::vector<hsa_ext_finalization_request_t> finalization_request_list;
+	    std::for_each(p.handle().get().kernels_.begin(), p.handle().get().kernels_.end(), [&finalization_request_list, &module](const kernel_entry& entry){
+	    	hsa_ext_finalization_request_t request;
+	    	memset(&request, 0, sizeof(hsa_ext_finalization_request_t));
+	    	request.module = module;              // module handle.
+	    	request.program_call_convention = 0;  // program call convention. not supported.
+	    	request.symbol = entry.offset_;
+	    	finalization_request_list.push_back(request);
+	    } );
+
+	    //Finalize hsa program.
+	    status = hsa_ext_finalize_program(hsa_program, device, finalization_request_list.size(), &finalization_request_list[0], NULL, NULL, 0, NULL, 0);
+
+
+	    hsa_region_t region;
+    	hsa_agent_iterate_regions(device,context::get_kernarg, &region);
+
+	    for (size_t i = 0 ;i < finalization_request_list.size() ; ++i)
+	    {
+	    	// create kernargs
+		    hsa_ext_code_descriptor_t *hsa_code_descriptor;
+		    hsa_ext_query_kernel_descriptor_address(hsa_program, module, finalization_request_list[i].symbol, &hsa_code_descriptor);
+	    	size_t run_kernel_arg_buffer_size =  hsa_code_descriptor->kernarg_segment_byte_size;
+	    	viennacl::hsa::kernel_arg_buffer buffer(region, run_kernel_arg_buffer_size,  p.handle().get().kernels_[i].arg_count_ );
+	    	p.add_kernel(tools::shared_ptr<viennacl::hsa::kernel>(new kernel(hsa_code_descriptor, buffer,p,*this, p.handle().get().kernels_[i].name_ )));
+	    }
+	    return status;
+  }
+
+
+private:
+ static hsa_status_t get_kernarg(hsa_region_t region, void* data) {
+    hsa_region_flag_t flags;
+    hsa_region_get_info(region, HSA_REGION_INFO_FLAGS, &flags);
+    if (flags & HSA_REGION_FLAG_KERNARG) {
+      hsa_region_t * ret = (hsa_region_t *) data;
+      *ret = region;
+      return HSA_STATUS_INFO_BREAK;
+    }
+    return HSA_STATUS_SUCCESS;
+  }
+
 
 
   bool initialized_;
