@@ -211,10 +211,16 @@ public:
     *  @param size   Size of the memory buffer in bytes
     *  @param ptr    Optional pointer to CPU memory, with which the OpenCL memory should be initialized
     */
-  viennacl::hsa::handle<hsa_registered_pointer> create_memory(unsigned int size, void * ptr = NULL) const
+  viennacl::hsa::handle<hsa_registered_pointer> create_memory(cl_mem_flags flags, unsigned int size, void * ptr = NULL) const
   {
     return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(size, ptr), *this);
   }
+
+  viennacl::hsa::handle<hsa_registered_pointer> create_memory( unsigned int size, void * ptr = NULL) const
+  {
+    return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(size, ptr), *this);
+  }
+
 
   /** @brief Creates a memory buffer within the context initialized from the supplied data
     *
@@ -222,7 +228,7 @@ public:
     *  @param buffer A vector (STL vector, ublas vector, etc.)
     */
   template< typename NumericT, typename A, template<typename, typename> class VectorType >
-  viennacl::hsa::handle<cl_mem> create_memory(cl_mem_flags flags, const VectorType<NumericT, A> & buffer) const
+  viennacl::hsa::handle<hsa_registered_pointer> create_memory(cl_mem_flags flags, const VectorType<NumericT, A> & buffer) const
   {
     return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(static_cast<cl_uint>(sizeof(NumericT) * buffer.size()), (void*)&buffer[0]), *this);
   }

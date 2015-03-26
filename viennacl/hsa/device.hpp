@@ -33,7 +33,7 @@
 #include <string>
 #include <sstream>
 #include <assert.h>
-#include "viennacl/hsa/device_utils.hpp"
+#include "viennacl/ocl/device_utils.hpp" // including ocl type because it will require changing all maps
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/error.hpp"
 
@@ -92,6 +92,16 @@ public:
 	  return NOT_IMPLEMENTED;
   }
 
+  const bool double_support() const
+  {
+	  return true;
+  }
+
+  const std::string double_support_extension() const
+  {
+	  return "cl_khr_fp64";
+  }
+
 
   bool operator==(device const & other) const
   {
@@ -102,13 +112,45 @@ public:
   {
     return device_ == other;
   }
+
+  const size_t local_mem_size() const
+  {
+	  return 32768;
+  }
+  const size_t max_work_group_size() const
+  {
+	  return 256;
+  }
+  std::vector<vcl_size_t> max_work_item_sizes() const
+	{
+	  std::vector<vcl_size_t> ret;
+	  ret.push_back(256);
+	  ret.push_back(256);
+	  ret.push_back(256);
+	  return ret;
+	}
+
+
+   const int vendor_id() const
+  {
+	  return 4098;
+  }
+
+   const int type() const
+   {
+	   return CL_DEVICE_TYPE_GPU;
+   }
+   const viennacl::ocl::device_architecture_family architecture_family() const
+   {
+	   return viennacl::ocl::northern_islands;
+   }
 private:
 
   void init()
   {
 	  // read hsa agent id
 	  NOT_IMPLEMENTED = "Not implemented";
-	  name_ = "AMD A8 Kaveri"; // temporary
+	  name_ = "Kaveri"; // temporary
   }
 
 

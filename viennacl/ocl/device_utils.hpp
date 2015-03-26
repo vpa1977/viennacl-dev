@@ -165,6 +165,7 @@ inline device_architecture_family get_architecture_family(cl_uint vendor_id, std
     //APUs (map to closest hardware architecture)
     VIENNACL_DEVICE_MAP("Scrapper",northern_islands);
     VIENNACL_DEVICE_MAP("Devastator",northern_islands);
+    VIENNACL_DEVICE_MAP("Kaveri",northern_islands);
 
 #undef VIENNACL_DEVICE_MAP
 
