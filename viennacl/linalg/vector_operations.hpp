@@ -38,6 +38,11 @@
   #include "viennacl/linalg/opencl/vector_operations.hpp"
 #endif
 
+//#ifdef VIENNACL_WITH_HSA
+ #include "viennacl/linalg/hsa/vector_operations.hpp"
+//#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/vector_operations.hpp"
 #endif
@@ -167,6 +172,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::vector_assign(vec1, alpha, up_to_internal_size);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::vector_assign(vec1, alpha, up_to_internal_size);
+		break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -870,6 +880,12 @@ namespace viennacl
           viennacl::linalg::cuda::max_impl(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::max_impl(vec, result);
+          break;
+#endif
+
         case viennacl::MEMORY_NOT_INITIALIZED:
           throw memory_exception("not initialised!");
         default:

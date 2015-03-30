@@ -22,6 +22,7 @@
     @brief Implementations of vector operations using OpenCL
 */
 
+
 #include <cmath>
 
 #include "viennacl/forwards.h"
@@ -50,6 +51,25 @@ namespace hsa
 //
 // Introductory note: By convention, all dimensions are already checked in the dispatcher frontend. No need to double-check again in here!
 //
+
+
+
+/** @brief Assign a constant value to a vector (-range/-slice)
+*
+* @param x   The vector to which the value should be assigned
+* @param alpha  The value to be assigned
+* @param up_to_internal_size  Specifies whether alpha should also be written to padded memory (mostly used for clearing the whole buffer).
+*/
+template<typename NumericT>
+void vector_assign(vector_base<NumericT> & x, const NumericT & alpha, bool up_to_internal_size = false)
+{
+  scalar_vector<NumericT> y(viennacl::traits::size(x),alpha,viennacl::traits::context(x));
+  scheduler::statement statement = scheduler::preset_hsa::assign_cpu(&x, &y);
+
+  dynamic_cast<hsa_specific::vector_axpy_template*>(kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).template_of("assign_cpu"))->up_to_internal_size(up_to_internal_size);
+  kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).execute("assign_cpu", statement);
+}
+
 
 template<typename NumericT, typename ScalarT1>
 void av(vector_base<NumericT> & x,
@@ -113,21 +133,6 @@ void avbv_v(vector_base<NumericT> & x,
 }
 
 
-/** @brief Assign a constant value to a vector (-range/-slice)
-*
-* @param x   The vector to which the value should be assigned
-* @param alpha  The value to be assigned
-* @param up_to_internal_size  Specifies whether alpha should also be written to padded memory (mostly used for clearing the whole buffer).
-*/
-template<typename NumericT>
-void vector_assign(vector_base<NumericT> & x, const NumericT & alpha, bool up_to_internal_size = false)
-{
-  scalar_vector<NumericT> y(viennacl::traits::size(x),alpha,viennacl::traits::context(x));
-  scheduler::statement statement = scheduler::preset_hsa::assign_cpu(&x, &y);
-
-  dynamic_cast<device_specific::vector_axpy_template*>(kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).template_of("assign_cpu"))->up_to_internal_size(up_to_internal_size);
-  kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).execute("assign_cpu", statement);
-}
 
 
 /** @brief Swaps the contents of two vectors, data is copied
@@ -399,7 +404,7 @@ template<typename NumericT>
 void max_impl(vector_base<NumericT> const & x,
                    scalar<NumericT> & result)
 {
-  assert(viennacl::traits::opencl_handle(x).context() == viennacl::traits::opencl_handle(result).context() && bool("Operands do not reside in the same OpenCL context. Automatic migration not yet supported!"));
+  //assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(result).context() && bool("Operands do not reside in the same OpenCL context. Automatic migration not yet supported!"));
 
   scheduler::statement statement = scheduler::preset_hsa::max(&result, &x);
   kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).execute("max", statement);

@@ -94,7 +94,9 @@ public:
   void execute(container_type::key_type const & key, statements_container const & statements)
   {
     tools::shared_ptr<template_base> & template_pointer = kernels_.at(key);
-    template_pointer->enqueue(append_prefix(key), lazy_programs_, statements);
+    template_base* ptr= template_pointer.get();
+    std::string prefix = append_prefix(key);
+    ptr->enqueue(prefix, lazy_programs_, statements);
   }
 
 private:

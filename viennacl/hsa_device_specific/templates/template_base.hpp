@@ -232,9 +232,9 @@ private:
     result_type operator()(vector_base<NumericT> const & vec) const {
       if (binder_.bind(&viennacl::traits::handle(vec)))
       {
-        kernel_.arg(current_arg_++, vec.handle().opencl_handle());
-        kernel_.arg(current_arg_++, cl_uint(viennacl::traits::start(vec)));
-        kernel_.arg(current_arg_++, cl_uint(viennacl::traits::stride(vec)));
+        kernel_.arg(current_arg_++, vec.handle().hsa_handle());
+        kernel_.arg(current_arg_++, uint(viennacl::traits::start(vec)));
+        kernel_.arg(current_arg_++, uint(viennacl::traits::stride(vec)));
       }
     }
 

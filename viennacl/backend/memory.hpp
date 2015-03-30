@@ -63,6 +63,10 @@ namespace backend
 #ifdef VIENNACL_WITH_OPENCL
     viennacl::ocl::get_queue().finish();
 #endif
+#ifdef VIENNACL_WITH_HSA
+    viennacl::hsa::get_queue().finish();
+#endif
+
   }
 
 
@@ -300,7 +304,7 @@ namespace backend
       case MAIN_MEMORY:
         cpu_ram::memory_read(src_buffer.ram_handle(), src_offset, bytes_to_read, ptr, async);
         break;
-#ifdef VIENNACL_WTIH_HSA
+#ifdef VIENNACL_WITH_HSA
       case HSA_MEMORY:
     	cpu_ram::memory_read(src_buffer.hsa_handle(), src_offset, bytes_to_read, ptr, async);
     	break;

@@ -167,7 +167,7 @@ public:
 #endif
 
       }
-
+      else
         throw "invalid new memory region!";
     }
   }
