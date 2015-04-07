@@ -66,24 +66,25 @@ public:
   /** @brief Waits until all kernels in the queue have finished their execution */
   void finish() const
   {
-	  hsa_signal_t signal;
+	  hsa_signal_t signal, signal_dep;
+
 	  hsa_signal_create(1,0,NULL,&signal);
 
-	  hsa_barrier_packet_t barrier;
-	  memset(&barrier, 0, sizeof(barrier));
-	  barrier.header.type=HSA_PACKET_TYPE_BARRIER;
-	  barrier.header.acquire_fence_scope=2;
-	  barrier.header.release_fence_scope=2;
-	  barrier.header.barrier=1;
-
-	  barrier.completion_signal = signal;
 	  uint64_t index = hsa_queue_load_write_index_relaxed(handle_.get());
+	  hsa_barrier_or_packet_t barrier;
+	  memset(&barrier, 0, sizeof(barrier));
+	  barrier.header =  HSA_PACKET_TYPE_BARRIER_AND;
+	  barrier.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
+	  barrier.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
+	  barrier.completion_signal = signal;
+	  //barrier.dep_signal[0] = signal_dep;
 	  const uint32_t queue_mask = handle_.get()->size - 1;
-	  ((hsa_barrier_packet_t*)(handle_.get()->base_address))[index&queue_mask]=barrier;
+	  ((hsa_barrier_or_packet_t*)(handle_.get()->base_address))[index&queue_mask]=barrier;
 	  hsa_queue_store_write_index_relaxed(handle_.get(), index+1);
 	  hsa_signal_store_relaxed(handle_.get()->doorbell_signal, index);
-	  hsa_signal_wait_acquire(signal, HSA_LT, 1, (uint64_t) -1, HSA_WAIT_EXPECTANCY_UNKNOWN);
+	  hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) -1, HSA_WAIT_STATE_ACTIVE);
 	  hsa_signal_destroy(signal);
+
   }
 
   /** @brief Waits until all kernels in the queue have started their execution */

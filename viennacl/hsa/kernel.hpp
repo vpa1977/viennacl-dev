@@ -42,23 +42,29 @@ namespace viennacl
   {
 	  struct arg_ref
 	  {
+		  arg_ref() : local(false), size(0), val(0), ptr(0) {}
 		  bool local;
 		  size_t size;
 		  uint64_t val;
 		  void* ptr;
 	  };
   public:
-	  kernel_arg_buffer() : ptr_(0) , need_finalize_(false){}
-	  kernel_arg_buffer(hsa_region_t region, size_t size, size_t arg_count)
+	  kernel_arg_buffer() : ptr_(0) , need_finalize_(false),  dynamic_local_size_(0){}
+	  kernel_arg_buffer(hsa_region_t region, size_t size)
   	  {
 		  hsa_memory_allocate(region,size,(void**)&ptr_);
-		  m_arg_refs.resize(arg_count);
-		  memset(&m_arg_refs[0], 0, sizeof(arg_ref)* arg_count);
+		  memset(ptr_, 0, size);
+		  dynamic_local_size_ = 0;
 		  need_finalize_ = true;
   	  }
 	  template<typename T>
-	  void set(int offset, T value )
+	  void set(size_t offset, T value )
 	  {
+		  if (offset >= m_arg_refs.size())
+		  {
+			  m_arg_refs.resize(offset+1);
+			  need_finalize_ = true;
+		  }
 		  arg_ref& ref = m_arg_refs[offset];
 		  if (ref.ptr)
 		  {
@@ -73,8 +79,13 @@ namespace viennacl
 			  memcpy(&ref.val, &value, sizeof(value));
 		  }
 	  }
-	  void set_local(int offset, size_t size)
+	  void set_local(size_t offset, size_t size)
 	  {
+		  if (offset >= m_arg_refs.size())
+		  {
+			  m_arg_refs.resize(offset+1);
+			  need_finalize_ = true;
+		  }
 		  arg_ref& ref = m_arg_refs[offset];
 		  if (ref.size != size)
 		  {
@@ -84,7 +95,7 @@ namespace viennacl
 		  }
 
 	  }
-	  void finalize(hsa_ext_code_descriptor_t* code)
+	  void finalize(size_t group_segment_size)
 	  {
 		  if (!need_finalize_)
 			  return;
@@ -95,13 +106,15 @@ namespace viennacl
 			  arg_ref& ref = m_arg_refs[i];
 			  if (!ref.local)
 			  {
+				  if (ref.size == 0)
+					  throw std::runtime_error("Bad Kernel Arg");
 				  ref.ptr = ptr_ + cur_offset;
 				  memcpy(ref.ptr, &ref.val, ref.size);
 				  cur_offset += ref.size;
 			  }
 			  else
 			  {
-				  uint64_t local_ptr = code->workgroup_group_segment_byte_size + local_offset;
+				  uint64_t local_ptr = group_segment_size + local_offset;
 				  memcpy(ref.ptr, &local_ptr, sizeof(uint64_t));
 				  local_offset += ref.size;
 				  cur_offset += sizeof(uint64_t);
@@ -157,15 +170,19 @@ namespace viennacl
     public:
       typedef vcl_size_t            size_type;
 
-      kernel() : handle_(0),arg_buffer_(), p_program_(NULL), p_context_(NULL), name_()
+      kernel() : handle_(0),arg_buffer_(), p_program_(NULL), p_context_(NULL), name_(),  workgroup_group_segment_byte_size_(0), workitem_private_segment_byte_size_(0)
       {
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
         std::cout << "ViennaCL: Creating kernel object (default CTOR): " << name_ << std::endl;
         #endif
       }
 
-      kernel(hsa_ext_code_descriptor_t*  kernel_handle, kernel_arg_buffer args, viennacl::hsa::program const & kernel_program, viennacl::hsa::context const & kernel_context, std::string const & name)
-        : handle_(kernel_handle),arg_buffer_(args), p_program_(&kernel_program), p_context_(&kernel_context), name_(name)
+      kernel(uint64_t kernel_handle, kernel_arg_buffer args,
+    		  viennacl::hsa::program const & kernel_program,
+			  viennacl::hsa::context const & kernel_context,
+			  std::string const & name, size_t group_segment_size, size_t private_segment_size) :
+				  handle_(kernel_handle),arg_buffer_(args), p_program_(&kernel_program), p_context_(&kernel_context), name_(name),
+				  workgroup_group_segment_byte_size_(group_segment_size), workitem_private_segment_byte_size_(private_segment_size)
       {
 
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
@@ -175,7 +192,8 @@ namespace viennacl
       }
 
       kernel(kernel const & other)
-        : handle_(other.handle_), arg_buffer_(other.arg_buffer_), p_program_(other.p_program_), p_context_(other.p_context_), name_(other.name_)
+        : handle_(other.handle_), arg_buffer_(other.arg_buffer_), p_program_(other.p_program_), p_context_(other.p_context_), name_(other.name_),
+		  workgroup_group_segment_byte_size_(other.workgroup_group_segment_byte_size_), workitem_private_segment_byte_size_(other.workitem_private_segment_byte_size_)
       {
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
         std::cout << "ViennaCL: Creating kernel object (Copy CTOR): " << name_ << std::endl;
@@ -863,7 +881,7 @@ namespace viennacl
 
       std::string const & name() const { return name_; }
 
-      hsa_ext_code_descriptor_t* const & handle() const { return handle_; }
+      uint64_t const & handle() const { return handle_; }
 
       viennacl::hsa::context const & context() const { return *p_context_; }
 
@@ -871,11 +889,14 @@ namespace viennacl
 
       inline void set_work_size_defaults();    //see context.hpp for implementation
 
-      hsa_ext_code_descriptor_t* handle_;
+      uint64_t handle_;
       kernel_arg_buffer arg_buffer_;
       viennacl::hsa::program const * p_program_;
       viennacl::hsa::context const * p_context_;
       std::string name_;
+      size_t workgroup_group_segment_byte_size_;
+      size_t workitem_private_segment_byte_size_;
+
       size_type local_work_size_[3];
       size_type global_work_size_[3];
     };

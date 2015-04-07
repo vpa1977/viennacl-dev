@@ -49,7 +49,7 @@ class device
 {
 	std::string NOT_IMPLEMENTED;
 public:
-  explicit device() : device_(0) {  }
+  explicit device() : device_() {  }
 
 
   explicit device(hsa_agent_t dev) : device_(dev)
@@ -59,12 +59,12 @@ public:
 #endif
   }
 
-  device(const device & other) : device_(0)
+  device(const device & other) : device_()
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_DEVICE)
     std::cout << "ViennaCL: Creating device object (Copy CTOR)" << std::endl;
 #endif
-    if (device_ != other.device_)
+    if (device_.handle != other.device_.handle)
     {
       device_ = other.device_;
     }
@@ -105,12 +105,12 @@ public:
 
   bool operator==(device const & other) const
   {
-    return device_ == other.device_;
+    return device_.handle == other.device_.handle;
   }
 
   bool operator==(hsa_agent_t other) const
   {
-    return device_ == other;
+    return device_.handle == other.handle;
   }
 
   const size_t local_mem_size() const

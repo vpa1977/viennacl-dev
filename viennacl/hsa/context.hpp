@@ -242,8 +242,18 @@ public:
     std::cout << "ViennaCL: Adding existing queue " << q << " for device " << dev << " to context " << h_ << std::endl;
 #endif
     viennacl::hsa::handle<hsa_queue_t*> queue_handle(q, *this);
-    queues_[dev].push_back(viennacl::hsa::command_queue(queue_handle));
-    queues_[dev].back().handle().inc();
+    queues_[dev.handle].push_back(viennacl::hsa::command_queue(queue_handle));
+    queues_[dev.handle].back().handle().inc();
+  }
+
+  void add_queue(uint64_t device_handle, hsa_queue_t* q)
+  {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
+    std::cout << "ViennaCL: Adding existing queue " << q << " for device " << dev << " to context " << h_ << std::endl;
+#endif
+    viennacl::hsa::handle<hsa_queue_t*> queue_handle(q, *this);
+    queues_[device_handle].push_back(viennacl::hsa::command_queue(queue_handle));
+    queues_[device_handle].back().handle().inc();
   }
 
   /** @brief Adds a queue for the given device to the context */
@@ -258,10 +268,10 @@ public:
     	throw std::runtime_error("unable to get queue size");
 
     hsa_queue_t* command_queue;
-    hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_MULTI, NULL, NULL, &command_queue);
+    hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX,&command_queue);
 
     viennacl::hsa::command_queue queue(viennacl::hsa::handle<hsa_queue_t*>(command_queue, *this));
-    queues_[dev].push_back(queue);
+    queues_[dev.handle].push_back(queue);
   }
 
   /** @brief Adds a queue for the given device to the context */
@@ -275,12 +285,12 @@ public:
     std::cout << "ViennaCL: Current queue id " << current_queue_id_ << std::endl;
 #endif
 
-    return queues_[devices_[current_device_id_].id()][current_queue_id_];
+    return queues_[devices_[current_device_id_].id().handle][current_queue_id_];
   }
 
   viennacl::hsa::command_queue const & get_queue() const
   {
-    typedef std::map< hsa_agent_t, std::vector<viennacl::hsa::command_queue> >    QueueContainer;
+    typedef std::map< uint64_t, std::vector<viennacl::hsa::command_queue> >    QueueContainer;
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Getting const queue for device " << devices_[current_device_id_].name() << " in context " << h_ << std::endl;
@@ -288,7 +298,7 @@ public:
 #endif
 
     // find queue:
-    QueueContainer::const_iterator it = queues_.find(devices_[current_device_id_].id());
+    QueueContainer::const_iterator it = queues_.find(devices_[current_device_id_].id().handle);
     if (it != queues_.end()) {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
       std::cout << "ViennaCL: Queue handle " << (it->second)[current_queue_id_].handle() << std::endl;
@@ -308,7 +318,7 @@ public:
   /** @brief Returns the queue with the provided index for the given device */
   viennacl::hsa::command_queue & get_queue(hsa_agent_t dev, vcl_size_t i = 0)
   {
-    if (i >= queues_[dev].size())
+    if (i >= queues_[dev.handle].size())
       throw invalid_command_queue();
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
@@ -323,20 +333,20 @@ public:
 
     assert(device_index < devices_.size() && bool("Device not within context"));
 
-    return queues_[devices_[device_index].id()][i];
+    return queues_[devices_[device_index].id().handle][i];
   }
 
   /** @brief Returns the current device */
   // TODO: work out the const issues
   viennacl::hsa::command_queue const & current_queue() //const
   {
-    return queues_[devices_[current_device_id_].id()][current_queue_id_];
+    return queues_[devices_[current_device_id_].id().handle][current_queue_id_];
   }
 
   /** @brief Switches the current device to the i-th device in this context */
   void switch_queue(vcl_size_t i)
   {
-    assert(i < queues_[devices_[current_device_id_].id()].size() && bool("In class 'context': Provided queue index out of range for device!"));
+    assert(i < queues_[devices_[current_device_id_].id().handle].size() && bool("In class 'context': Provided queue index out of range for device!"));
     current_queue_id_ = i;
   }
 
@@ -347,7 +357,7 @@ public:
     std::cout << "ViennaCL: Setting new current queue for context " << h_ << std::endl;
 #endif
     bool found = false;
-    typedef std::map< hsa_agent_t, std::vector<viennacl::hsa::command_queue> >    QueueContainer;
+    typedef std::map< uint64_t, std::vector<viennacl::hsa::command_queue> >    QueueContainer;
 
     // For each device:
     vcl_size_t j = 0;
@@ -373,9 +383,9 @@ public:
   /////////////////// create program ///////////////////////////////
   /** @brief Adds a program to the context
     */
-  viennacl::hsa::program & add_program(brig_module p, std::string const & prog_name)
+  viennacl::hsa::program & add_program(const std::vector<char>& binary, std::string const & prog_name)
   {
-    programs_.push_back(tools::shared_ptr<hsa::program>(new viennacl::hsa::program(p, *this, prog_name)));
+    programs_.push_back(tools::shared_ptr<hsa::program>(new viennacl::hsa::program(binary, *this, prog_name)));
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Adding program '" << prog_name << "' with cl_program to context " << h_ << std::endl;
 #endif
@@ -394,7 +404,7 @@ public:
     std::cout << "ViennaCL: Adding program '" << prog_name << "' with source to context " << h_ << std::endl;
 #endif
 
-    brig_module temp;
+    std::vector<char> temp;
 
     //
     // Retrieves the program in the cache
@@ -419,7 +429,7 @@ public:
         cached.read((char*)&len, sizeof(vcl_size_t));
         buffer.resize(len);
         cached.read((char*)buffer.data(), std::streamsize(len));
-        temp = brig_module(buffer);
+        temp = buffer;
       }
     }
 
@@ -428,14 +438,14 @@ public:
     	//const char * options = build_options_.c_str();
     	compiler_helper helper;
     	std::vector<char> binary = helper.compile_brig(source_text);
-    	temp = brig_module(binary);
+    	temp = binary;
     }
 
     programs_.push_back(tools::shared_ptr<hsa::program>(new hsa::program(temp, *this, prog_name)));
 
     viennacl::hsa::program & prog = *programs_.back();
     //temporary - use single hsa device for tests.
-    finalize(current_device().id(), prog);
+    //finalize(current_device().id(), prog);
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Stored program '" << programs_.back()->name() << "' in context " << h_ << std::endl;
@@ -674,6 +684,7 @@ private:
 #endif
   }
 
+  /*
   hsa_status_t finalize(hsa_agent_t device, program& p)
   {
 	  hsa_status_t status = HSA_STATUS_SUCCESS;
@@ -714,9 +725,10 @@ private:
 	    }
 	    return status;
   }
-
+*/
 
 private:
+  /*
  static hsa_status_t get_kernarg(hsa_region_t region, void* data) {
     hsa_region_flag_t flags;
     hsa_region_get_info(region, HSA_REGION_INFO_FLAGS, &flags);
@@ -726,7 +738,7 @@ private:
       return HSA_STATUS_INFO_BREAK;
     }
     return HSA_STATUS_SUCCESS;
-  }
+  }*/
 
 
 
@@ -739,7 +751,7 @@ private:
   vcl_size_t current_device_id_;
   vcl_size_t default_device_num_;
   program_container_type programs_;
-  std::map< hsa_agent_t, std::vector< viennacl::hsa::command_queue> > queues_;
+  std::map< uint64_t, std::vector< viennacl::hsa::command_queue> > queues_;
   std::string build_options_;
   vcl_size_t pf_index_;
   vcl_size_t current_queue_id_;
@@ -762,6 +774,125 @@ inline viennacl::hsa::kernel & viennacl::hsa::program::get_kernel(std::string co
   std::cout << "Number of kernels in program: " << kernels_.size() << std::endl;
   throw "Kernel not found";
   //return kernels_[0];  //return a defined object
+}
+
+void viennacl::hsa::program::finalize()
+{
+		hsa_agent_t agent = p_context_->current_device().id();
+		hsa_status_t err;
+		hsa_ext_program_t program;
+		memset(&program, 0, sizeof(hsa_ext_program_t));
+		err = hsa_ext_program_create(HSA_MACHINE_MODEL_LARGE, HSA_PROFILE_FULL,
+				HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT, NULL, &program);
+		/*
+		 * Add the BRIG module to hsa program.
+		 */
+		err = hsa_ext_program_add_module(program,(hsa_ext_module_t) & source_[0]);
+
+		hsa_isa_t isa;
+		err = hsa_agent_get_info(p_context_->current_device().id(),
+				HSA_AGENT_INFO_ISA, &isa);
+		/*
+		 * Finalize the program and extract the code object.
+		 */
+		hsa_ext_control_directives_t control_directives;
+		memset(&control_directives, 0, sizeof(hsa_ext_control_directives_t));
+		hsa_code_object_t code_object;
+		err = hsa_ext_program_finalize(program, isa, 0, control_directives, "",
+				HSA_CODE_OBJECT_TYPE_PROGRAM, &code_object);
+
+		err = hsa_ext_program_destroy(program);
+
+		hsa_executable_t executable;
+		err = hsa_executable_create(HSA_PROFILE_FULL,
+				HSA_EXECUTABLE_STATE_UNFROZEN, "", &executable);
+
+		/*
+		 * Load the code object.
+		 */
+		err = hsa_executable_load_code_object(executable, agent, code_object,
+				"");
+
+		/*
+		 * Freeze the executable; it can now be queried for symbols.
+		 */
+		err = hsa_executable_freeze(executable, "");
+		if (err == HSA_STATUS_SUCCESS)
+		{
+			hsa_code new_code;
+			new_code.code_object_ = code_object;
+			new_code.executable_ = executable;
+
+			handle_ = viennacl::hsa::handle<hsa_code>(new_code, *p_context_);
+
+
+			load_kernels();
+		}
+	}
+void viennacl::hsa::program::load_kernels()
+{
+
+	auto get_kernarg = [](hsa_region_t region, void* data)->hsa_status_t {
+	    hsa_region_segment_t segment;
+	    hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment);
+	    if (HSA_REGION_SEGMENT_GLOBAL != segment) {
+	        return HSA_STATUS_SUCCESS;
+	    }
+
+	    hsa_region_global_flag_t flags;
+	    hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flags);
+	    if (flags & HSA_REGION_GLOBAL_FLAG_KERNARG) {
+	        hsa_region_t* ret = (hsa_region_t*) data;
+	        *ret = region;
+	        return HSA_STATUS_INFO_BREAK;
+	    }
+
+	    return HSA_STATUS_SUCCESS;
+	};
+
+
+	kernarg_region_.handle=(uint64_t)-1;
+	hsa_agent_iterate_regions(p_context()->current_device().id(), get_kernarg, &kernarg_region_);
+
+
+	hsa_executable_iterate_symbols(handle_.get().executable_, [](hsa_executable_t executable, hsa_executable_symbol_t symbol, void* data)->hsa_status_t
+			{
+				viennacl::hsa::program& prg = *(viennacl::hsa::program*)data;
+				hsa_symbol_kind_t kind;
+				hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_TYPE, &kind);
+				if (kind == HSA_SYMBOL_KIND_KERNEL)
+				{
+					hsa_status_t err;
+					uint32_t len;
+					std::string kernel_name;
+				    uint64_t kernel_object;
+				    uint32_t kernarg_segment_size;
+				    uint32_t group_segment_size;
+				    uint32_t private_segment_size;
+
+					// create a new kernel
+					err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &len);
+					kernel_name.resize(len);
+					err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME, &kernel_name[0]);
+
+				    err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &kernel_object);
+
+				    err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE, &kernarg_segment_size);
+
+				    err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_GROUP_SEGMENT_SIZE, &group_segment_size);
+
+				    err = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &private_segment_size);
+
+				    assert( err == HSA_STATUS_SUCCESS);
+
+				    viennacl::hsa::kernel_arg_buffer kernargs(prg.kernarg_region_, kernarg_segment_size);
+				    tools::shared_ptr<viennacl::hsa::kernel> kern_ptr(new kernel(kernel_object, kernargs, prg, *prg.p_context(), kernel_name, group_segment_size, private_segment_size));
+				    prg.add_kernel(kern_ptr);
+
+				}
+
+				return HSA_STATUS_SUCCESS;
+			}, this);
 }
 
 

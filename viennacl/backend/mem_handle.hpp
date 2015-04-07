@@ -36,6 +36,10 @@
 #include "viennacl/backend/cuda.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/backend/hsa.hpp"
+#endif
+
 
 namespace viennacl
 {
@@ -114,9 +118,9 @@ public:
 
 #ifdef VIENNACL_WITH_HSA
   /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
-  ram_handle_type       & hsa_handle()       { return ram_handle_; }
+  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer>       & hsa_handle()       { return hsa_handle_; }
   /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
-  ram_handle_type const & hsa_handle() const { return ram_handle_; }
+  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer> const & hsa_handle() const { return hsa_handle_; }
 
 #endif
 
@@ -263,7 +267,7 @@ private:
   memory_types active_handle_;
   ram_handle_type ram_handle_;
 #ifdef VIENNACL_WITH_HSA
-  ram_handle_type hsa_handle_;
+  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer> hsa_handle_;
 #endif
 #ifdef VIENNACL_WITH_OPENCL
   viennacl::ocl::handle<cl_mem> opencl_handle_;

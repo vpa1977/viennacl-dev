@@ -88,10 +88,10 @@ private:
 
 class hsa_registered_pointer {
 public:
-	hsa_registered_pointer(void* ptr, size_t size) {
+	hsa_registered_pointer(void* ptr, size_t size, bool own = true) {
 		m_ptr = ptr;
 		m_size = size;
-
+		m_own = own;
 	}
 
 	void prepare() {
@@ -100,15 +100,43 @@ public:
 
 	void release() {
 		hsa_memory_deregister(m_ptr, m_size);
-		free(m_ptr);
+		if (m_own)
+			free(m_ptr);
 		m_ptr = 0;
 	}
+
+	const bool operator==(const hsa_registered_pointer& other) const
+	{
+		return other.m_ptr == m_ptr;
+	}
+
 	void* get() {
 		return m_ptr;
 	}
+
+	const void* get() const
+	{
+		return m_ptr;
+	}
 private:
+	bool m_own;
 	void * m_ptr;
 	size_t m_size;
+};
+
+struct hsa_code
+{
+	hsa_code_object_t code_object_;
+	hsa_executable_t executable_;
+};
+
+template<>
+struct handle_release_helper<hsa_code> {
+	static void release(hsa_code& ptr) {
+		hsa_executable_destroy( ptr.executable_ );
+		hsa_code_object_destroy( ptr.code_object_ );
+
+	}
 };
 
 template<>
@@ -128,32 +156,12 @@ struct handle_release_helper<hsa_registered_pointer> {
 };
 
 template<>
-struct handle_release_helper<hsa_ext_program_handle_t> {
-	static void release(const hsa_ext_program_handle_t& h) {
-		hsa_ext_program_destroy(h);
-	}
-};
-
-template<>
 struct handle_release_helper<hsa_queue_t*> {
 	static void release(hsa_queue_t* const & h) {
 		hsa_queue_destroy(h);
 	}
 };
 
-template<>
-struct handle_release_helper<brig_module> {
-	static void release(brig_module& h) {
-		h.free_module();
-	}
-};
-
-template<>
-struct handle_release_helper<hsa_ext_code_descriptor_t*> {
-	static void release(hsa_ext_code_descriptor_t*& h) {
-
-	}
-};
 
 template<class T>
 struct wrapper {
@@ -224,13 +232,17 @@ public:
 		return h_->m_x;
 	}
 
+	 OCL_TYPE & get()  {
+			return h_->m_x;
+		}
+
 	viennacl::hsa::context const & context() const {
 		assert(
 				p_context_ != NULL && bool("Logic error: Accessing dangling context from handle."));
 		return *p_context_;
 	}
-	void context(viennacl::hsa::context const & c) {
-		p_context_ = &c;
+	void context(viennacl::context const & c) {
+		p_context_ = (viennacl::hsa::context*) &c;
 	}
 
 	/** @brief Swaps the OpenCL handle of two handle objects */

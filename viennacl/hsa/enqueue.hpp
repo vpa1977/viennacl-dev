@@ -41,54 +41,73 @@ namespace hsa {
 template<typename KernelType>
 void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 
+
+	hsa_signal_t signal;
+
+	hsa_signal_create(1,0,NULL,&signal);
+
 	// get command queue from context
 	hsa_queue_t* command_queue = queue.handle().get();
-	hsa_dispatch_packet_t aql;
+	hsa_kernel_dispatch_packet_t aql;
 	// create a dispatch packet
 	memset(&aql, 0, sizeof(aql));
+	aql.header = HSA_PACKET_TYPE_KERNEL_DISPATCH;
+    aql.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
+    aql.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
+
+
 
 	// setup dispatch sizes
-	aql.dimensions = 1;
+	size_t dimensions = 1;
 	aql.workgroup_size_x = kernel.local_work_size(0);
 	aql.grid_size_x = kernel.global_work_size(0);
 	if (kernel.global_work_size(1) >= 1) {
-		++aql.dimensions;
+		++dimensions;
 		aql.grid_size_y = kernel.global_work_size(1);
 		aql.workgroup_size_y = kernel.local_work_size(1);
 	}
+	else
+	{
+		aql.grid_size_y = 1;
+		aql.workgroup_size_y = 1;
+	}
 	if (kernel.global_work_size(2) >= 1) {
-		++aql.dimensions;
+		++dimensions;
 		aql.grid_size_z = kernel.global_work_size(2);
 		aql.workgroup_size_z = kernel.local_work_size(2);
+	} else
+	{
+		aql.grid_size_z = 1;
+		aql.workgroup_size_z = 1;
 	}
+	aql.setup  |= dimensions << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
 
 	// set dispatch fences
-	aql.header.type = HSA_PACKET_TYPE_DISPATCH;
-	aql.header.acquire_fence_scope = 2;
-	aql.header.release_fence_scope = 2;
-	aql.header.barrier = 1;
 
 	// bind kernel code
-	aql.kernel_object_address = kernel.handle_->code.handle;
-	kernel.arg_buffer_.finalize(kernel.handle_);
-	aql.kernarg_address = (uint64_t)kernel.arg_buffer_.kernargs();
+	aql.kernel_object = kernel.handle_;
+	kernel.arg_buffer_.finalize(kernel.workgroup_group_segment_byte_size_);
+	aql.kernarg_address = kernel.arg_buffer_.kernargs();
 	// Initialize memory resources needed to execute
-	aql.group_segment_size = kernel.handle_->workgroup_group_segment_byte_size
+	aql.group_segment_size = kernel.workgroup_group_segment_byte_size_
 			+ kernel.arg_buffer_.dynamic_local_size();
-	aql.private_segment_size =
-			kernel.handle_->workitem_private_segment_byte_size;
-
+	aql.private_segment_size =	kernel.workitem_private_segment_byte_size_;
+	aql.completion_signal = signal;
 	// write packet
 	uint32_t queueMask = command_queue->size - 1;
 	uint64_t index = hsa_queue_load_write_index_relaxed(command_queue);
-	((hsa_dispatch_packet_t*) (command_queue->base_address))[index & queueMask] =
+	((hsa_kernel_dispatch_packet_t*) (command_queue->base_address))[index & queueMask] =
 			aql;
 	hsa_queue_store_write_index_relaxed(command_queue, index + 1);
 
 	//printf("ring door bell\n");
 
 	// Ring door bell
-	hsa_signal_store_relaxed(command_queue->doorbell_signal, index + 1);
+	hsa_signal_store_relaxed(command_queue->doorbell_signal, index );
+
+	hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t)-1, HSA_WAIT_STATE_ACTIVE);
+
+	hsa_signal_destroy(signal);
 } //enqueue()
 
 /** @brief Convenience function that enqueues the provided kernel into the first queue of the currently active device in the currently active context */

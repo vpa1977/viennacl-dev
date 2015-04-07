@@ -92,8 +92,7 @@ public:
     * @param i    ID of the context to be set up
     * @param devices A vector of OpenCL device-IDs that should be added to the context
     */
-  static void setup_context(long i,
-                            std::vector<hsa_agent_t> const & devices)
+  static void setup_context(long i, std::vector<hsa_agent_t> const & devices)
   {
     if (initialized_[i])
       std::cerr << "ViennaCL: Warning in init_context(): Providing a list of devices has no effect, because context for ViennaCL is already created!" << std::endl;
@@ -115,7 +114,7 @@ public:
   static void setup_context(long i,
                             hsa_environment c,
                             std::vector<hsa_agent_t> const & devices,
-                            std::map< hsa_agent_t, std::vector< hsa_queue_t* > > const & queues)
+                            std::map< uint64_t, std::vector< hsa_queue_t* > > const & queues)
   {
     assert(devices.size() == queues.size() && bool("ViennaCL expects one queue per device!"));
 
@@ -131,7 +130,7 @@ public:
       contexts_[i].init(c);
 
       //add queues:
-      typedef typename std::map< hsa_agent_t, std::vector< hsa_queue_t* > >::const_iterator queue_iterator;
+      typedef typename std::map< uint64_t, std::vector< hsa_queue_t* > >::const_iterator queue_iterator;
       for (queue_iterator qit = queues.begin();
            qit != queues.end();
            ++qit)
@@ -157,9 +156,9 @@ public:
     assert(devices.size() == queue.size() && bool("ViennaCL expects one queue per device!"));
 
     //wrap queue vector into map
-    std::map< hsa_agent_t, std::vector<hsa_queue_t*> > queues_map;
+    std::map< uint64_t , std::vector<hsa_queue_t*> > queues_map;
     for (vcl_size_t j = 0; j<devices.size(); ++j)
-      queues_map[devices[j]].push_back(queue[j]);
+      queues_map[devices[j].handle].push_back(queue[j]);
 
     setup_context(i, c, devices, queues_map);
   }
@@ -247,7 +246,7 @@ inline void setup_context(long i,
 inline void setup_context(long i,
                           hsa_environment c,
                           std::vector<hsa_agent_t> const & devices,
-                          std::map< hsa_agent_t, std::vector<hsa_queue_t*> > const & queues)
+                          std::map< uint64_t, std::vector<hsa_queue_t*> > const & queues)
 {
   viennacl::hsa::backend<>::setup_context(i, c, devices, queues);
 }
