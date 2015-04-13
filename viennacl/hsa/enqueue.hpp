@@ -44,6 +44,10 @@ void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 
 	hsa_signal_t signal;
 
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::endl;
+#endif
+
 	hsa_signal_create(1,0,NULL,&signal);
 
 	// get command queue from context

@@ -108,7 +108,7 @@ namespace backend
 #ifdef VIENNACL_WITH_HSA
       case HSA_MEMORY:
     	  handle.hsa_handle() = hsa::memory_create(ctx.hsa_context(), size_in_bytes,host_ptr);
-    	  handle.hsa_handle().context(ctx);
+    	  handle.hsa_handle().context(&ctx.hsa_context());
     	  handle.raw_size(size_in_bytes);
     	break;
 #endif

@@ -53,9 +53,11 @@ namespace viennacl
 	  kernel_arg_buffer(hsa_region_t region, size_t size)
   	  {
 		  hsa_memory_allocate(region,size,(void**)&ptr_);
-		  memset(ptr_, 0, size);
+
 		  dynamic_local_size_ = 0;
 		  need_finalize_ = true;
+		  size_ = size;
+		  memset(ptr_, 0, size_);
   	  }
 	  template<typename T>
 	  void set(size_t offset, T value )
@@ -72,10 +74,9 @@ namespace viennacl
 		  }
 		  else
 		  {
+			  assert( sizeof(T) <= sizeof(uint64_t));
 			  ref.local = false;
-			  ref.size = sizeof(T);
-			  if (ref.size == 1)
-				  ref.size = 2;
+			  ref.size = std::max(sizeof(T), sizeof(uint8_t));
 			  memcpy(&ref.val, &value, sizeof(value));
 		  }
 	  }
@@ -90,7 +91,7 @@ namespace viennacl
 		  if (ref.size != size)
 		  {
 			  ref.local = true;
-			  ref.size = size;
+			  ref.size = size + size % sizeof(uint64_t); // align to 64 bit
 			  need_finalize_ = true;
 		  }
 
@@ -99,15 +100,26 @@ namespace viennacl
 	  {
 		  if (!need_finalize_)
 			  return;
+		  memset(ptr_, 0, size_);
 		  size_t local_offset = 0;
 		  size_t cur_offset = sizeof(uint64_t) * 6; // production HSA compiler
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: Finalization List " << std::endl;
+#endif
+
 		  for (size_t i = 0 ;i < m_arg_refs.size();++i)
 		  {
 			  arg_ref& ref = m_arg_refs[i];
 			  if (!ref.local)
 			  {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: pos  "<< i << " Global Mem  size " << ref.size  << std::endl;
+#endif
+
 				  if (ref.size == 0)
 					  throw std::runtime_error("Bad Kernel Arg");
+				  while ((cur_offset % ref.size) != 0)
+					  ++cur_offset;
 				  ref.ptr = ptr_ + cur_offset;
 				  memcpy(ref.ptr, &ref.val, ref.size);
 				  cur_offset += ref.size;
@@ -118,8 +130,22 @@ namespace viennacl
 				  memcpy(ref.ptr, &local_ptr, sizeof(uint64_t));
 				  local_offset += ref.size;
 				  cur_offset += sizeof(uint64_t);
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: pos  "<< i << " Local Mem  size " << ref.size  << std::endl;
+#endif
+
 			  }
 		  }
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: End of Finalization"<< std::endl;
+#endif
+/*		for (int i = 0 ;i < size_; ++i)
+		{
+			printf("%02x", ptr_[i]);
+		}
+		printf("\n");
+*/
+
 		  dynamic_local_size_ = local_offset;
 		  need_finalize_ = false;
 	  }
@@ -138,6 +164,7 @@ namespace viennacl
 	  }
 
   private:
+	  size_t size_;
 	  char * ptr_;
 	  bool need_finalize_;
 	  size_t dynamic_local_size_;
@@ -332,7 +359,7 @@ namespace viennacl
       void arg(unsigned int pos, VCL_TYPE const & val)
       {
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-        std::cout << "ViennaCL: Setting generic kernel argument " << temp << " at pos " << pos << " for kernel " << name_ << std::endl;
+        std::cout << "ViennaCL: Setting generic kernel argument " << val << " at pos " << pos << " for kernel " << name_ << std::endl;
         #endif
         arg_buffer_.set(pos,val);
 
@@ -340,6 +367,15 @@ namespace viennacl
 
       //forward handles directly:
       /** @brief Sets an OpenCL object at the provided position */
+	void arg(unsigned int pos, viennacl::hsa::handle<hsa_registered_pointer> const & h)
+	{
+	 const void* temp = h.get().get();
+	 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+	 std::cout << "ViennaCL: Setting handle kernel argument " << temp << " at pos " << pos << " for kernel " << name_ << std::endl;
+	 #endif
+	 arg_buffer_.set(pos,temp);
+	}
+
       template<class CL_TYPE>
       void arg(unsigned int pos, viennacl::hsa::handle<CL_TYPE> const & h)
       {

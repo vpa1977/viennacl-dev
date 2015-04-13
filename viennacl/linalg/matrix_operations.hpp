@@ -41,6 +41,11 @@
   #include "viennacl/linalg/opencl/matrix_operations.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/matrix_operations.hpp"
+#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/matrix_operations.hpp"
 #endif
@@ -66,6 +71,12 @@ namespace viennacl
           viennacl::linalg::opencl::trans(proxy,temp_trans);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::trans(proxy,temp_trans);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::trans(proxy,temp_trans);
@@ -94,6 +105,12 @@ namespace viennacl
           viennacl::linalg::opencl::am(mat1, mat2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::am(mat1, mat2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::am(mat1, mat2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
@@ -127,6 +144,15 @@ namespace viennacl
                                          mat3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::ambm(mat1,
+                                         mat2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                         mat3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
+          break;
+#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::ambm(mat1,
@@ -162,6 +188,14 @@ namespace viennacl
                                            mat3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::ambm_m(mat1,
+                                           mat2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                           mat3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::ambm_m(mat1,
@@ -190,6 +224,13 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_assign(mat, s, clear);
           break;
 #endif
+
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::matrix_assign(mat, s, clear);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_assign(mat, s, clear);
@@ -216,6 +257,12 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_diagonal_assign(mat, s);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::matrix_diagonal_assign(mat, s);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_diagonal_assign(mat, s);
@@ -243,6 +290,12 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_diag_from_vector(v, k, A);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::matrix_diag_from_vector(v, k, A);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_diag_from_vector(v, k, A);
@@ -269,6 +322,12 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_diag_to_vector(A, k, v);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::matrix_diag_to_vector(A, k, v);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_diag_to_vector(A, k, v);
@@ -294,6 +353,12 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_row(A, i, v);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::matrix_row(A, i, v);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_row(A, i, v);
@@ -319,6 +384,12 @@ namespace viennacl
           viennacl::linalg::opencl::matrix_column(A, j, v);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::matrix_column(A, j, v);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::matrix_column(A, j, v);
@@ -425,6 +496,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(mat, false, vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::prod_impl(mat, false, vec, result);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(mat, false, vec, result);
@@ -466,6 +543,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(mat_trans.lhs(), true, vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::prod_impl(mat_trans.lhs(), true, vec, result);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(mat_trans.lhs(), true, vec, result);
@@ -510,6 +593,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(A, false, B, false, C, alpha, beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::prod_impl(A, false, B, false, C, alpha, beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(A, false, B, false, C, alpha, beta);
@@ -552,6 +641,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(A.lhs(), true, B, false, C, alpha, beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::prod_impl(A.lhs(), true, B, false, C, alpha, beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(A.lhs(), true, B, false, C, alpha, beta);
@@ -593,6 +688,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(A, false, B.lhs(), true, C, alpha, beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::prod_impl(A, false, B.lhs(), true, C, alpha, beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(A, false, B.lhs(), true, C, alpha, beta);
@@ -633,6 +734,12 @@ namespace viennacl
           viennacl::linalg::opencl::prod_impl(A.lhs(), true, B.lhs(), true, C, alpha, beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::prod_impl(A.lhs(), true, B.lhs(), true, C, alpha, beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::prod_impl(A.lhs(), true, B.lhs(), true, C, alpha, beta);
@@ -672,6 +779,12 @@ namespace viennacl
           viennacl::linalg::opencl::element_op(A, proxy);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::element_op(A, proxy);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::element_op(A, proxy);
@@ -832,6 +945,14 @@ namespace viennacl
                                                          vec1, vec2);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::scaled_rank_1_update(mat1,
+                                                           alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                                           vec1, vec2);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::scaled_rank_1_update(mat1,
@@ -869,6 +990,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::bidiag_pack(A, dh, sh);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::bidiag_pack(A, dh, sh);
+        break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA
@@ -913,6 +1039,11 @@ namespace viennacl
           viennacl::linalg::opencl::copy_vec(A, V, row_start, col_start, copy_col);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::copy_vec(A, V, row_start, col_start, copy_col);
+        break;
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -949,6 +1080,11 @@ namespace viennacl
         viennacl::linalg::opencl::house_update_A_left(A, D, start);
         break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::house_update_A_left(A, D, start);
+        break;
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
       case viennacl::CUDA_MEMORY:
@@ -983,6 +1119,11 @@ namespace viennacl
 #ifdef VIENNACL_WITH_OPENCL
       case viennacl::OPENCL_MEMORY:
         viennacl::linalg::opencl::house_update_A_right(A, D);
+        break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::house_update_A_right(A, D);
         break;
 #endif
 
@@ -1027,6 +1168,11 @@ namespace viennacl
         viennacl::linalg::cuda::house_update_QL(Q, D, A_size1);
         break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::house_update_QL(Q, D, A_size1);
+        break;
+#endif
 
       case viennacl::MEMORY_NOT_INITIALIZED:
         throw memory_exception("not initialised!");
@@ -1061,6 +1207,11 @@ namespace viennacl
 #ifdef VIENNACL_WITH_OPENCL
       case viennacl::OPENCL_MEMORY:
         viennacl::linalg::opencl::givens_next(Q, tmp1, tmp2, l, m);
+        break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::givens_next(Q, tmp1, tmp2, l, m);
         break;
 #endif
 
@@ -1099,6 +1250,11 @@ namespace viennacl
         viennacl::linalg::opencl::inclusive_scan(vec1, vec2);
         break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::inclusive_scan(vec1, vec2);
+        break;
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
       case viennacl::CUDA_MEMORY:
@@ -1133,6 +1289,11 @@ namespace viennacl
 #ifdef VIENNACL_WITH_OPENCL
       case viennacl::OPENCL_MEMORY:
         viennacl::linalg::opencl::exclusive_scan(vec1, vec2);
+        break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::exclusive_scan(vec1, vec2);
         break;
 #endif
 

@@ -73,7 +73,7 @@ namespace viennacl
 
 				// append module header and remove version directive - 1.0p to 1.0f fixup
 				std::vector<char> line;
-				line.resize(1024);
+				line.resize(8192);
 				tmp = fopen(name.c_str(), "r");
 
 				fgets(&line[0], line.size(), tmp);

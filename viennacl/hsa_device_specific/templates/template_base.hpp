@@ -24,13 +24,9 @@
  * Base classes for the profiles
 */
 
-#include <viennacl/ocl/device_utils.hpp>
 #include <list>
 #include <set>
 
-#include "viennacl/ocl/kernel.hpp"
-#include "viennacl/ocl/device.hpp"
-#include "viennacl/ocl/device_utils.hpp"
 
 
 #include "viennacl/hsa/kernel.hpp"
@@ -43,11 +39,9 @@
 #include "viennacl/hsa_device_specific/tree_parsing.hpp"
 #include "viennacl/hsa_device_specific/utils.hpp"
 
-#ifdef VIENNACL_WITH_HSA
+
 namespace vcl = viennacl::hsa;
-#else
-namespace vcl = viennacl::ocl;
-#endif
+
 
 
 namespace viennacl
@@ -224,7 +218,7 @@ private:
     template<class NumericT>
     result_type operator()(scalar<NumericT> const & scal) const {
       if (binder_.bind(&viennacl::traits::handle(scal)))
-        kernel_.arg(current_arg_++, scal.handle().opencl_handle());
+        kernel_.arg(current_arg_++, scal.handle().hsa_handle());
     }
 
     /** @brief Vector mapping */
@@ -254,7 +248,7 @@ private:
     {
       if (binder_.bind(&viennacl::traits::handle(mat)))
       {
-        kernel_.arg(current_arg_++, mat.handle().opencl_handle());
+        kernel_.arg(current_arg_++, mat.handle().hsa_handle());
         kernel_.arg(current_arg_++, cl_uint(viennacl::traits::ld(mat)));
         if (mat.row_major())
         {

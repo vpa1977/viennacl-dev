@@ -93,7 +93,7 @@ public:
   void default_device_type(hsa_device_type_t dtype)
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
-    std::cout << "ViennaCL: Setting new device type for context " << h_ << std::endl;
+    std::cout << "ViennaCL: Setting new device type for context " << dtype << std::endl;
 #endif
     if (!initialized_)
       device_type_ = dtype; //assume that the user provided a correct value
@@ -124,7 +124,7 @@ public:
   void switch_device(viennacl::hsa::device const & d)
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
-    std::cout << "ViennaCL: Setting new current device for context " << h_ << std::endl;
+    std::cout << "ViennaCL: Setting new current device for context " << d.name() << std::endl;
 #endif
     bool found = false;
     for (vcl_size_t i=0; i<devices_.size(); ++i)
@@ -145,7 +145,7 @@ public:
   {
     assert(!initialized_ && bool("Device must be added to context before it is initialized!"));
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
-    std::cout << "ViennaCL: Adding new device to context " << h_ << std::endl;
+    std::cout << "ViennaCL: Adding new device to context " << d.name() << std::endl;
 #endif
     if (std::find(devices_.begin(), devices_.end(), d) == devices_.end())
       devices_.push_back(d);
@@ -196,10 +196,11 @@ public:
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Creating memory of size " << size << " for context " << h_ << " (unsafe, returning cl_mem directly)" << std::endl;
 #endif
+    void * new_ptr = malloc(size);
 
-    if (!ptr)
-    	ptr = malloc(size);
-    hsa_registered_pointer hsa_ptr(ptr,size);
+    if (ptr)
+    	memcpy(new_ptr, ptr, size);
+    hsa_registered_pointer hsa_ptr(new_ptr,size);
     hsa_ptr.prepare();
     return hsa_ptr;
   }

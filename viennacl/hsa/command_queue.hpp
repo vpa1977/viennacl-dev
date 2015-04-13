@@ -66,7 +66,12 @@ public:
   /** @brief Waits until all kernels in the queue have finished their execution */
   void finish() const
   {
-	  hsa_signal_t signal, signal_dep;
+	  hsa_signal_t signal;
+
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: queue flush "  << std::endl;
+#endif
+
 
 	  hsa_signal_create(1,0,NULL,&signal);
 

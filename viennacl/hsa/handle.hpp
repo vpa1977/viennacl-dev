@@ -35,6 +35,7 @@
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/error.hpp"
 
+
 namespace viennacl {
 namespace hsa {
 
@@ -101,7 +102,9 @@ public:
 	void release() {
 		hsa_memory_deregister(m_ptr, m_size);
 		if (m_own)
+		{
 			free(m_ptr);
+		}
 		m_ptr = 0;
 	}
 
@@ -173,6 +176,9 @@ struct wrapper {
 	int m_count;
 };
 
+
+
+
 /** @brief Handle class the effectively represents a smart pointer for OpenCL handles */
 template<class OCL_TYPE>
 class handle {
@@ -196,8 +202,17 @@ public:
 			dec();
 	}
 
+	size_t refcount()
+	{
+		if (h_)
+			return h_->m_count;
+		return 0;
+	}
+
 	/** @brief Copies the OpenCL handle from the provided handle. Does not take ownership like e.g. std::auto_ptr<>, so both handle objects are valid (more like shared_ptr). */
 	handle & operator=(const handle & other) {
+		if (other.h_ == h_)
+			return *this;
 		if (h_ != 0)
 			dec();
 		h_ = other.h_;
@@ -211,6 +226,7 @@ public:
 		if (h_ != 0)
 			dec();
 		h_ = new wrapper<OCL_TYPE>(something);
+		inc();
 		return *this;
 	}
 
@@ -218,7 +234,8 @@ public:
 	handle & operator=(std::pair<OCL_TYPE, cl_context> p) {
 		if (h_ != 0)
 			dec();
-		h_ = p.first;
+		h_ = new wrapper<OCL_TYPE>(p.first);
+		inc();
 		p_context_ = p.second;
 		return *this;
 	}
@@ -241,8 +258,8 @@ public:
 				p_context_ != NULL && bool("Logic error: Accessing dangling context from handle."));
 		return *p_context_;
 	}
-	void context(viennacl::context const & c) {
-		p_context_ = (viennacl::hsa::context*) &c;
+	void context(const viennacl::hsa::context* c) {
+		p_context_ =  c;
 	}
 
 	/** @brief Swaps the OpenCL handle of two handle objects */
@@ -267,12 +284,17 @@ public:
 		if (--h_->m_count == 0) {
 			handle_release_helper<OCL_TYPE>::release(h_->m_x);
 			delete h_;
+			h_ = 0;
 		}
+	}
+	std::ostream & operator<<(std::ostream &os) {
+	    return os << "(handle)";
 	}
 private:
 	wrapper<OCL_TYPE>* h_;
 	viennacl::hsa::context const * p_context_;
 };
+
 
 } //namespace hsa
 } //namespace viennacl

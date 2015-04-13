@@ -474,11 +474,11 @@ class matrix
 private:
 
   template<typename ScalarT1, typename ScalarT2>
-  static void generate_ambm_impl2(device_specific::execution_handler & handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_ambm_impl2(hsa_specific::execution_handler & handler, std::string const & prefix, hsa_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::matrix_base<NumericT> const * x, viennacl::matrix_base<NumericT> const * y, ScalarT1 const * a,
                                  viennacl::matrix_base<NumericT> const * z, ScalarT2 const * b)
   {
-    namespace ds = viennacl::device_specific;
+    namespace ds = viennacl::hsa_specific;
 
     handler.add(prefix + "0000", ds::matrix_axpy_template(parameters), scheduler::preset_hsa::avbv(ASSIGN_OP, x, y, a, false, false, z, b, false, false));
     handler.add(prefix + "1000", ds::matrix_axpy_template(parameters), scheduler::preset_hsa::avbv(ASSIGN_OP, x, y, a, true, false, z, b, false, false));
@@ -504,7 +504,7 @@ private:
   }
 
   template<typename ScalarT>
-  static void generate_ambm_impl(device_specific::execution_handler & handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_ambm_impl(hsa_specific::execution_handler & handler, std::string const & prefix, hsa_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::matrix_base<NumericT> const * x, viennacl::matrix_base<NumericT> const * y, ScalarT const * ha, viennacl::scalar<ScalarT> const * da,
                                  viennacl::matrix_base<NumericT> const * z, ScalarT const * hb, viennacl::scalar<ScalarT> const * db)
   {
@@ -521,16 +521,15 @@ private:
 
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
+  static hsa_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<bool, hsa_specific::execution_handler> handlers_map;
+    bool key(is_row_major);
     if (handlers_map.find(key) == handlers_map.end())
     {
       viennacl::hsa::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
 
-      namespace ds = viennacl::device_specific;
+      namespace ds = viennacl::hsa_specific;
       viennacl::hsa::device const & device = ctx.current_device();
       std::string program_name = viennacl::hsa::type_to_string<NumericT>::apply() + (is_row_major?"matrix_row":"matrix_col");
       handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
@@ -589,18 +588,18 @@ struct matrix_element
 {
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
+  static hsa_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<bool, hsa_specific::execution_handler> handlers_map;
+
+    bool key(is_row_major);
     if (handlers_map.find(key) == handlers_map.end())
     {
       viennacl::hsa::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
 
-      namespace ds = viennacl::device_specific;
+      namespace ds = viennacl::hsa_specific;
       using namespace scheduler;
-      using device_specific::tree_parsing::operator_string;
+      using hsa_specific::tree_parsing::operator_string;
 
       std::string numeric_string = viennacl::hsa::type_to_string<NumericT>::apply();
       viennacl::hsa::device const & device = ctx.current_device();
@@ -676,15 +675,15 @@ template<typename NumericT>
 class row_wise_reduction
 {
 public:
-  static device_specific::execution_handler & execution_handler(viennacl::hsa::context & ctx)
+  static hsa_specific::execution_handler & execution_handler(viennacl::hsa::context & ctx)
   {
-    static std::map<cl_context, device_specific::execution_handler> handlers_map;
-    cl_context key = ctx.handle().get();
+    static std::map<bool, hsa_specific::execution_handler> handlers_map;
+    bool key = true;
     if (handlers_map.find(key) == handlers_map.end())
     {
       viennacl::hsa::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
 
-      namespace ds = viennacl::device_specific;
+      namespace ds = viennacl::hsa_specific;
       viennacl::hsa::device const & device = ctx.current_device();
       std::string program_name = viennacl::hsa::type_to_string<NumericT>::apply() + "_matrix_row_wise";
       handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
@@ -706,16 +705,16 @@ template<typename NumericT>
 class matrix_prod
 {
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
+  static hsa_specific::execution_handler & execution_handler(bool is_row_major, viennacl::hsa::context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<bool, hsa_specific::execution_handler> handlers_map;
+
+    bool key(is_row_major);
     if (handlers_map.find(key) == handlers_map.end())
     {
       viennacl::hsa::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
 
-      namespace ds = viennacl::device_specific;
+      namespace ds = viennacl::hsa_specific;
       viennacl::hsa::device const & device = ctx.current_device();
       std::string program_name = viennacl::hsa::type_to_string<NumericT>::apply() + (is_row_major?"_matrix_prod_row":"_matrix_prod_col");
       handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
@@ -761,8 +760,8 @@ struct matrix_legacy
 
   static void init(viennacl::hsa::context & ctx)
   {
-    static std::map<viennacl::hsa::hsa_environment, bool> init_done;
-    if (!init_done[ctx.handle().get()])
+    static  bool init_done  = false;
+    if (!init_done)
     {
       viennacl::hsa::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
       std::string numeric_string = viennacl::hsa::type_to_string<NumericT>::apply();
@@ -790,7 +789,7 @@ struct matrix_legacy
       std::cout << "Creating program " << prog_name << std::endl;
       #endif
       ctx.add_program(source, prog_name);
-      init_done[ctx.handle().get()] = true;
+      init_done = true;
     } //if
   } //init
 };

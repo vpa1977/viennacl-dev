@@ -41,7 +41,7 @@ namespace viennacl
 namespace hsa_specific
 {
 
-inline void execute(template_base const & T, statements_container const & statements, viennacl::ocl::context & ctx = viennacl::ocl::current_context(), bool force_compilation = false)
+inline void execute(template_base const & T, statements_container const & statements, viennacl::hsa::context & ctx = viennacl::hsa::current_context(), bool force_compilation = false)
 {
   //Generate program name
   std::string program_name = tree_parsing::statements_representation(statements, BIND_TO_HANDLE);
