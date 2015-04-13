@@ -186,7 +186,14 @@ public:
     group_boundaries_.switch_active_handle_id(ctx.memory_type());
     coord_buffer_.switch_active_handle_id(ctx.memory_type());
     elements_.switch_active_handle_id(ctx.memory_type());
-
+#ifdef VIENNACL_WITH_HSA
+    if (ctx.memory_type() == HSA_MEMORY)
+    {
+      group_boundaries_.hsa_handle().context(&ctx.hsa_context());
+      coord_buffer_.hsa_handle().context(&ctx.hsa_context());
+      elements_.hsa_handle().context(&ctx.hsa_context());
+    }
+#endif
 #ifdef VIENNACL_WITH_OPENCL
     if (ctx.memory_type() == OPENCL_MEMORY)
     {
