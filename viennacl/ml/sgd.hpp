@@ -8,13 +8,18 @@
 #ifndef VIENNACL_ML_SGD_HPP_
 #define VIENNACL_ML_SGD_HPP_
 
-#include <boost/numeric/ublas/vector_sparse.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <viennacl/forwards.h>
 #include <viennacl/matrix.hpp>
 #include <viennacl/vector.hpp>
-#include <viennacl/linalg/reduce.hpp>
+#include <viennacl/scalar.hpp>
+
+#include <viennacl/linalg/vector_operations.hpp>
+#include <viennacl/linalg/matrix_operations.hpp>
+#include <viennacl/linalg/inner_prod.hpp>
+#include <viennacl/linalg/prod.hpp>       //generic matrix-vector product
 #include <viennacl/linalg/host_based/common.hpp>
+#include <viennacl/context.hpp>
+
 
 namespace viennacl {
 namespace ml {
@@ -33,6 +38,17 @@ public:
 		learning_rate_ = 0.01;
 		lambda_ = 0.0001;
 		nominal_ = nominal;
+		instance_size_ = len;
+	}
+
+	size_t instance_size()
+	{
+		return instance_size_;
+	}
+
+	void print_warning()
+	{
+		printf("Warning: not implemented\n");
 	}
 
 	void reset() {
@@ -201,7 +217,7 @@ public:
 
 		std::vector<double> res;
 
-		double wx = weights_ * instance;
+		double wx =  viennacl::linalg::inner_prod(weights_, instance);
 		double z = wx + bias_;
 		if (!nominal_)
 			res.push_back(z);
@@ -237,6 +253,7 @@ private:
 	double lambda_;
 	double bias_;
 	bool nominal_;
+	size_t instance_size_;
 };
 
 }
