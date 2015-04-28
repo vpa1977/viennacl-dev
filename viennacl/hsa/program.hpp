@@ -87,8 +87,8 @@ private:
 	}
 
 	// extract kernels and launch parameters
-	void finalize();
-	void load_kernels();
+	inline void finalize();
+	inline void load_kernels();
 
 	std::vector<char> source_;
 	handle<hsa_code> handle_;

@@ -42,6 +42,13 @@ namespace viennacl
 				result = replace( result, "activelaneshuffle", "activelanepermute");
 				if (result.find("memfence_", 0) != std::string::npos)
 					result = replace(result, "_group(wg)", "_wg");
+				//if (result.find("atomic_", 0) != std::string::npos)
+				result = replace(result, "_cmp_", "_agent_");
+				if (result.find("ftos_global_u64_u64",0)!= std::string::npos)
+					result = replace(result,"ftos_global_u64_u64", "mov_b64");
+				if (result.find("stof_global_u64_u64",0)!= std::string::npos)
+					result = replace(result,"stof_global_u64_u64", "mov_b64");
+
 				return result;
 			}
 
@@ -98,7 +105,7 @@ namespace viennacl
 				command += " ";
 				command += name;
 				system(command.c_str());
-				remove(name.c_str());
+				//remove(name.c_str());
 
 				name = buffer;
 				name += ".brig";

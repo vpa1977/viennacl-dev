@@ -777,7 +777,7 @@ inline viennacl::hsa::kernel & viennacl::hsa::program::get_kernel(std::string co
   //return kernels_[0];  //return a defined object
 }
 
-void viennacl::hsa::program::finalize()
+inline void viennacl::hsa::program::finalize()
 {
 		hsa_agent_t agent = p_context_->current_device().id();
 		hsa_status_t err;
@@ -830,7 +830,8 @@ void viennacl::hsa::program::finalize()
 			load_kernels();
 		}
 	}
-void viennacl::hsa::program::load_kernels()
+
+inline void viennacl::hsa::program::load_kernels()
 {
 
 	auto get_kernarg = [](hsa_region_t region, void* data)->hsa_status_t {

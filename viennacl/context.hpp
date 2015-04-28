@@ -48,6 +48,14 @@ public:
     else
       ocl_context_ptr_ = NULL;
 #endif
+
+#ifdef VIENNACL_WITH_HSA
+    if (mem_type_ == HSA_MEMORY)
+      hsa_context_ptr_ = &viennacl::hsa::current_context();
+    else
+      hsa_context_ptr_ = NULL;
+#endif
+
   }
 
   explicit context(viennacl::memory_types mtype) : mem_type_(mtype)
@@ -60,6 +68,14 @@ public:
     else
       ocl_context_ptr_ = NULL;
 #endif
+
+#ifdef VIENNACL_WITH_OPENCL
+    if (mem_type_ == HSA_MEMORY)
+      hsa_context_ptr_ = &viennacl::hsa::current_context();
+    else
+      hsa_context_ptr_ = NULL;
+#endif
+
   }
 
 #ifdef VIENNACL_WITH_OPENCL

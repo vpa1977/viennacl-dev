@@ -38,9 +38,9 @@
   #include "viennacl/linalg/opencl/vector_operations.hpp"
 #endif
 
-//#ifdef VIENNACL_WITH_HSA
+#ifdef VIENNACL_WITH_HSA
  #include "viennacl/linalg/hsa/vector_operations.hpp"
-//#endif
+#endif
 
 
 #ifdef VIENNACL_WITH_CUDA

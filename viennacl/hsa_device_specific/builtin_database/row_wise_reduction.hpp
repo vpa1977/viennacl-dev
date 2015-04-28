@@ -154,7 +154,7 @@ static database_type<row_wise_reduction_template::parameters_type> row_wise_redu
 static database_type<row_wise_reduction_template::parameters_type> row_wise_reduction_T = init_row_wise_reduction_T();
 
 template<class NumericT>
-device_specific::row_wise_reduction_template::parameters_type const & row_wise_reduction_params(vcl::device const & device, char A_trans)
+row_wise_reduction_template::parameters_type const & row_wise_reduction_params(vcl::device const & device, char A_trans)
 {
   assert(A_trans=='N' || A_trans=='T');
   database_type<row_wise_reduction_template::parameters_type> * db;
