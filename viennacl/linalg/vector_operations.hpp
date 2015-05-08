@@ -67,6 +67,11 @@ namespace viennacl
           viennacl::linalg::opencl::av(vec1, vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::av(vec1, vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
+          break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::av(vec1, vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha);
@@ -100,6 +105,13 @@ namespace viennacl
           viennacl::linalg::opencl::avbv(vec1,
                                          vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
                                          vec3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
+          break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::avbv(vec1,
+                                           vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                           vec3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
@@ -146,6 +158,14 @@ namespace viennacl
                                          vec3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::avbv_v(vec1,
+                                           vec2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                           vec3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
+            break;
+#endif
+
         case viennacl::MEMORY_NOT_INITIALIZED:
           throw memory_exception("not initialised!");
         default:
@@ -211,6 +231,12 @@ namespace viennacl
           viennacl::linalg::opencl::vector_swap(vec1, vec2);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::vector_swap(vec1, vec2);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::vector_swap(vec1, vec2);
@@ -249,6 +275,12 @@ namespace viennacl
           viennacl::linalg::opencl::element_op(vec1, proxy);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::element_op(vec1, proxy);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::element_op(vec1, proxy);
@@ -382,6 +414,12 @@ namespace viennacl
           viennacl::linalg::opencl::inner_prod_impl(vec1, vec2, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        viennacl::linalg::hsa::inner_prod_impl(vec1, vec2, result);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::inner_prod_impl(vec1, vec2, result);
@@ -453,6 +491,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::inner_prod_cpu(vec1, vec2, result);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        viennacl::linalg::hsa::inner_prod_cpu(vec1, vec2, result);
+        break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -526,6 +569,11 @@ namespace viennacl
           viennacl::linalg::opencl::inner_prod_impl(x, y_tuple, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::inner_prod_impl(x, y_tuple, result);
+        break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::inner_prod_impl(x, y_tuple, result);
@@ -557,6 +605,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::norm_1_impl(vec, result);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::norm_1_impl(vec, result);
+        break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -605,6 +658,11 @@ namespace viennacl
           viennacl::linalg::opencl::norm_1_cpu(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::linalg::hsa::norm_1_cpu(vec, result);
+        break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::norm_1_cpu(vec, result);
@@ -652,6 +710,11 @@ namespace viennacl
           viennacl::linalg::opencl::norm_2_impl(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::norm_2_impl(vec, result);
+        break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::norm_2_impl(vec, result);
@@ -696,6 +759,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::norm_2_cpu(vec, result);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::norm_2_cpu(vec, result);
+        break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -744,6 +812,11 @@ namespace viennacl
           viennacl::linalg::opencl::norm_inf_impl(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::norm_inf_impl(vec, result);
+        break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::norm_inf_impl(vec, result);
@@ -788,6 +861,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::norm_inf_cpu(vec, result);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::norm_inf_cpu(vec, result);
+        break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -834,6 +912,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           return viennacl::linalg::opencl::index_norm_inf(vec);
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+          return viennacl::linalg::hsa::index_norm_inf(vec);
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           return viennacl::linalg::cuda::index_norm_inf(vec);
@@ -924,6 +1007,11 @@ namespace viennacl
           viennacl::linalg::opencl::max_cpu(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::opencl::max_cpu(vec, result);
+            break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::max_cpu(vec, result);
@@ -967,6 +1055,11 @@ namespace viennacl
           viennacl::linalg::opencl::min_impl(vec, result);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::min_impl(vec, result);
+            break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::min_impl(vec, result);
@@ -1009,6 +1102,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::min_cpu(vec, result);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::min_cpu(vec, result);
+            break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
@@ -1059,6 +1157,11 @@ namespace viennacl
         case viennacl::OPENCL_MEMORY:
           viennacl::linalg::opencl::plane_rotation(vec1, vec2, alpha, beta);
           break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::plane_rotation(vec1, vec2, alpha, beta);
+            break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:

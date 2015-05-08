@@ -795,7 +795,7 @@ struct matrix_legacy
 };
 
 }  // namespace kernels
-}  // namespace opencl
+}  // namespace hsa
 }  // namespace linalg
 }  // namespace viennacl
 #endif
