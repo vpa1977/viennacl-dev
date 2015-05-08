@@ -1,0 +1,75 @@
+/*
+ * weights_update.hpp
+ *
+ *  Created on: 7/05/2015
+ *      Author: bsp
+ */
+
+#ifndef VIENNACL_ML_WEIGHTS_UPDATE_HPP_
+#define VIENNACL_ML_WEIGHTS_UPDATE_HPP_
+
+#include "viennacl/forwards.h"
+#include "viennacl/vector.hpp"
+#include "viennacl/compressed_matrix.hpp"
+#include "viennacl/scalar.hpp"
+#include "viennacl/vector.hpp"
+#include "viennacl/vector_proxy.hpp"
+#include "viennacl/tools/tools.hpp"
+#include "viennacl/meta/enable_if.hpp"
+#include "viennacl/meta/predicate.hpp"
+#include "viennacl/meta/result_of.hpp"
+#include "viennacl/traits/size.hpp"
+#include "viennacl/traits/start.hpp"
+#include "viennacl/traits/handle.hpp"
+#include "viennacl/traits/stride.hpp"
+
+#include "viennacl/ml/host/weights_update.hpp"
+
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/ml/hsa/weights_update.hpp"
+#endif
+
+namespace viennacl
+{
+namespace ml
+{
+
+	template <typename T>
+	void sgd_update_weights( viennacl::vector_base<T>& weights, const viennacl::compressed_matrix<T>& batch, const viennacl::vector_base<T>& factors)
+	{
+	      switch (viennacl::traits::handle(weights).get_active_handle_id())
+	      {
+	        case viennacl::MAIN_MEMORY:
+	          viennacl::ml::host::sgd_update_weights(weights, batch, factors);
+	          break;
+	#ifdef VIENNACL_WITH_OPENCL
+	        case viennacl::OPENCL_MEMORY:
+	        	 throw memory_exception("not implemented");
+	          break;
+	#endif
+	#ifdef VIENNACL_WITH_HSA
+	        case viennacl::HSA_MEMORY:
+	        	viennacl::ml::hsa::sgd_update_weights(weights,batch,factors);
+	          break;
+	#endif
+
+	#ifdef VIENNACL_WITH_CUDA
+	        case viennacl::CUDA_MEMORY:
+	        	 throw memory_exception("not implemented");
+	          break;
+	#endif
+	        case viennacl::MEMORY_NOT_INITIALIZED:
+	          throw memory_exception("not initialised!");
+	        default:
+	          throw memory_exception("not implemented");
+	      }
+
+	}
+
+}
+}
+
+
+
+
+#endif /* VIENNACL_ML_WEIGHTS_UPDATE_HPP_ */

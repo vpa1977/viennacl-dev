@@ -45,6 +45,9 @@ namespace viennacl
     namespace detail
     {
 
+
+
+
       template<typename SparseMatrixType, typename SCALARTYPE, unsigned int VEC_ALIGNMENT>
       typename viennacl::enable_if< viennacl::is_any_sparse_matrix<SparseMatrixType>::value >::type
       row_info(SparseMatrixType const & mat,
@@ -316,6 +319,39 @@ namespace viennacl
 
 
     }
+
+
+    template<typename NumericT>
+    void matrix_row(const compressed_matrix<NumericT> & A, unsigned int i, vector_base<NumericT> & v)
+    {
+      switch (viennacl::traits::handle(A).get_active_handle_id())
+      {
+        case viennacl::MAIN_MEMORY:
+          viennacl::linalg::host_based::detail::matrix_row(A, i, v);
+          break;
+    #ifdef VIENNACL_WITH_OPENCL
+        case viennacl::OPENCL_MEMORY:
+        	throw memory_exception("not implemented");
+          break;
+    #endif
+    #ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	throw memory_exception("not implemented");
+          break;
+    #endif
+
+    #ifdef VIENNACL_WITH_CUDA
+        case viennacl::CUDA_MEMORY:
+        	throw memory_exception("not implemented");
+          break;
+    #endif
+        case viennacl::MEMORY_NOT_INITIALIZED:
+          throw memory_exception("not initialised!");
+        default:
+          throw memory_exception("not implemented");
+      }
+    }
+
 
 
 

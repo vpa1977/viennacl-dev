@@ -894,6 +894,8 @@ private:
 
 namespace linalg
 {
+
+
 namespace detail
 {
   // x = A * y
@@ -974,8 +976,21 @@ namespace detail
     }
   };
 
+
+
 } // namespace detail
 } // namespace linalg
+
+
+template<typename NumericT, unsigned int F>
+vector_expression< const compressed_matrix<NumericT, F>, const unsigned int, op_row>
+row(const compressed_matrix<NumericT, F> & A, unsigned int i)
+{
+  return vector_expression< const compressed_matrix<NumericT, F>, const unsigned int, op_row>(A, i);
+};
+
+
+
   /** \endcond */
 }
 

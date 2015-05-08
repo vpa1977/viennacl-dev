@@ -202,7 +202,7 @@ viennacl::ocl::context & opencl_context(T const & obj)
 template<typename T>
 viennacl::hsa::handle<viennacl::hsa::hsa_registered_pointer> & hsa_handle(T & obj)
 {
-  return viennacl::traits::handle(obj).opencl_handle();
+  return viennacl::traits::handle(obj).hsa_handle();
 }
 
 /** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Const version. */

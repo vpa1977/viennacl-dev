@@ -43,6 +43,27 @@ namespace host_based
 
 namespace detail
 {
+
+
+template<typename NumericT>
+void matrix_row(const compressed_matrix<NumericT> & mat, unsigned int row_idx, vector_base<NumericT> & vec)
+{
+  NumericT         * result_buf = detail::extract_raw_pointer<NumericT>(vec.handle());
+  NumericT   const * elements   = detail::extract_raw_pointer<NumericT>(mat.handle());
+  unsigned int const * row_buffer = detail::extract_raw_pointer<unsigned int>(mat.handle1());
+  unsigned int const * col_buffer = detail::extract_raw_pointer<unsigned int>(mat.handle2());
+
+  unsigned int row_start = row_buffer[row_idx];
+  unsigned int row_end = row_buffer[row_idx+1];
+#ifdef VIENNACL_WITH_OPENMP
+  #pragma omp parallel for
+#endif
+  for (vcl_size_t i = row_start; i < row_end; ++i)
+	  result_buf[col_buffer[i] * vec.stride() + vec.start()] = elements[i];
+}
+
+
+
   template<typename NumericT, unsigned int AlignmentV>
   void row_info(compressed_matrix<NumericT, AlignmentV> const & mat,
                 vector_base<NumericT> & vec,

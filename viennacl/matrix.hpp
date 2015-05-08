@@ -2791,6 +2791,12 @@ namespace detail
     {
       viennacl::linalg::matrix_row(proxy.lhs(), proxy.rhs(), lhs);
     }
+
+    static void apply(vector_base<T> & lhs, vector_expression<const compressed_matrix<T>, const unsigned int, op_row> const & proxy)
+    {
+      viennacl::linalg::matrix_row(proxy.lhs(), proxy.rhs(), lhs);
+    }
+
   };
 
 
