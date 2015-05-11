@@ -153,6 +153,12 @@ void copy(CPUMatrixT const & cpu_matrix, sliced_ell_matrix<ScalarT, IndexT> & gp
         gpu_matrix.rows_per_block_ = 256;
 #endif
     }
+    else if (ctx.memory_type() == HSA_MEMORY)
+    {
+#ifdef VIENNACL_WITH_HSA
+    	gpu_matrix.rows_per_block_ = 256;
+#endif
+    }
   }
 
   if (viennacl::traits::size1(cpu_matrix) > 0 && viennacl::traits::size2(cpu_matrix) > 0)

@@ -66,6 +66,9 @@ public:
   /** @brief Waits until all kernels in the queue have finished their execution */
   void finish() const
   {
+	  if (true)
+		  return;
+
 	  hsa_signal_t signal;
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)

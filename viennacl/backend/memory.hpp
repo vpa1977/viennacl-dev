@@ -706,11 +706,13 @@ namespace backend
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
           viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.ram_handle().get());
           break;
+#ifdef VIENNACL_WITH_HSA
         case HSA_MEMORY:
 		   if (handle_dst.raw_size() != handle_src.raw_size())
 			 viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
 		   viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.hsa_handle().get().get());
 		   break;
+#endif
 
         case OPENCL_MEMORY:
           if (handle_dst.raw_size() != handle_src.raw_size())

@@ -208,7 +208,7 @@ void inplace_solve(compressed_matrix<NumericT, MAT_AlignmentV> const & L,
   viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::init(ctx);
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::opencl::kernels::compressed_matrix<NumericT>::program_name(), "unit_lu_forward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(L.handle1().hsa_handle(), L.handle2().hsa_handle(), L.handle().hsa_handle(),
                            viennacl::traits::hsa_handle(x),
@@ -232,7 +232,7 @@ void inplace_solve(compressed_matrix<NumericT, AlignmentV> const & L,
 
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "lu_forward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(L.handle1().hsa_handle(), L.handle2().hsa_handle(), L.handle().hsa_handle(),
                            viennacl::traits::hsa_handle(x),
@@ -256,7 +256,7 @@ void inplace_solve(compressed_matrix<NumericT, AlignmentV> const & U,
   viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::init(ctx);
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "unit_lu_backward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(U.handle1().hsa_handle(), U.handle2().hsa_handle(), U.handle().hsa_handle(),
                            viennacl::traits::opencl_handle(x),
@@ -280,7 +280,7 @@ void inplace_solve(compressed_matrix<NumericT, AlignmentV> const & U,
 
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "lu_backward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(U.handle1().hsa_handle(), U.handle2().hsa_handle(), U.handle().hsa_handle(),
                            viennacl::traits::hsa_handle(x),
@@ -366,7 +366,7 @@ void inplace_solve(matrix_expression< const compressed_matrix<NumericT, Alignmen
   viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::init(ctx);
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "trans_unit_lu_forward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(proxy_L.lhs().handle1().hsa_handle(), proxy_L.lhs().handle2().hsa_handle(), proxy_L.lhs().handle().hsa_handle(),
                            viennacl::traits::hsa_handle(x),
@@ -396,7 +396,7 @@ void inplace_solve(matrix_expression< const compressed_matrix<NumericT, Alignmen
 
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "trans_lu_forward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(proxy_L.lhs().handle1().hsa_handle(), proxy_L.lhs().handle2().hsa_handle(), proxy_L.lhs().handle().hsa_handle(),
                            viennacl::traits::hsa_handle(diagonal),
@@ -422,7 +422,7 @@ void inplace_solve(matrix_expression< const compressed_matrix<NumericT, Alignmen
   viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::init(ctx);
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "trans_unit_lu_backward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(proxy_U.lhs().handle1().hsa_handle(), proxy_U.lhs().handle2().hsa_handle(), proxy_U.lhs().handle().hsa_handle(),
                            viennacl::traits::hsa_handle(x),
@@ -452,7 +452,7 @@ void inplace_solve(matrix_expression< const compressed_matrix<NumericT, Alignmen
 
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::program_name(), "trans_lu_backward");
 
-  k.local_work_size(0, 128);
+  k.local_work_size(0, 256);
   k.global_work_size(0, k.local_work_size());
   viennacl::hsa::enqueue(k(proxy_U.lhs().handle1().hsa_handle(), proxy_U.lhs().handle2().hsa_handle(), proxy_U.lhs().handle().hsa_handle(),
                            viennacl::traits::hsa_handle(diagonal),
@@ -519,7 +519,7 @@ namespace detail
     viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(viennacl::traits::hsa_handle(A).context());
     viennacl::linalg::hsa::kernels::coordinate_matrix<NumericT>::init(ctx);
     viennacl::hsa::kernel & row_info_kernel = ctx.get_kernel(viennacl::linalg::hsa::kernels::coordinate_matrix<NumericT>::program_name(), "row_info_extractor");
-    unsigned int thread_num = 128; //k.local_work_size(0);
+    unsigned int thread_num = 256; //k.local_work_size(0);
 
     row_info_kernel.local_work_size(0, thread_num);
 
@@ -565,7 +565,7 @@ void prod_impl(viennacl::coordinate_matrix<NumericT, AlignmentV> const & A,
   //std::cout << "prod(coordinate_matrix" << AlignmentV << ", vector) called with internal_nnz=" << A.internal_nnz() << std::endl;
 
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::opencl::kernels::coordinate_matrix<NumericT>::program_name(), "vec_mul");
-  unsigned int thread_num = 128; //k.local_work_size(0);
+  unsigned int thread_num = 256; //k.local_work_size(0);
 
   k.local_work_size(0, thread_num);
 
@@ -603,7 +603,7 @@ void prod_impl(viennacl::coordinate_matrix<NumericT, AlignmentV> const & A,
 
   y.clear();
 
-  unsigned int thread_num = 128; //k.local_work_size(0);
+  unsigned int thread_num = 256; //k.local_work_size(0);
   k.local_work_size(0, thread_num);
   k.global_work_size(0, 64 * thread_num);  //64 work groups are hard-coded for now. Gives reasonable performance in most cases
 
@@ -646,7 +646,7 @@ void prod_impl(viennacl::coordinate_matrix<NumericT, AlignmentV> const & A,
 
   y.clear();
 
-  unsigned int thread_num = 128; //k.local_work_size(0);
+  unsigned int thread_num = 256; //k.local_work_size(0);
   k.local_work_size(0, thread_num);
   k.global_work_size(0, 64 * thread_num);  //64 work groups are hard-coded for now. Gives reasonable performance in most cases
 
@@ -699,7 +699,7 @@ void prod_impl(viennacl::ell_matrix<NumericT, AlignmentV> const & A,
   ss << "vec_mul_" << 1;//(AlignmentV != 1?4:1);
   viennacl::hsa::kernel& k = ctx.get_kernel(viennacl::linalg::hsa::kernels::ell_matrix<NumericT>::program_name(), "vec_mul");
 
-  unsigned int thread_num = 128;
+  unsigned int thread_num = 256;
   unsigned int group_num = 256;
 
   k.local_work_size(0, thread_num);
@@ -741,7 +741,7 @@ void prod_impl(viennacl::ell_matrix<NumericT, AlignmentV> const & sp_A,
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::ell_matrix<NumericT>::program_name(),
                                              detail::sparse_dense_matmult_kernel_name(false, d_A.row_major(), y.row_major()));
 
-  //unsigned int thread_num = 128;
+  //unsigned int thread_num = 256;
   //unsigned int group_num = 256;
   //
   //k.local_work_size(0, thread_num);
@@ -788,7 +788,7 @@ void prod_impl(viennacl::ell_matrix<NumericT, AlignmentV> const & sp_A,
   viennacl::hsa::kernel & k = ctx.get_kernel(viennacl::linalg::hsa::kernels::ell_matrix<NumericT>::program_name(),
                                              detail::sparse_dense_matmult_kernel_name(true, d_A.lhs().row_major(), y.row_major()));
 
-  //unsigned int thread_num = 128;
+  //unsigned int thread_num = 256;
   //unsigned int group_num = 256;
   //
   //k.local_work_size(0, thread_num);

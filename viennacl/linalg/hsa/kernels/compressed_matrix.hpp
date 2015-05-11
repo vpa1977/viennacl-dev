@@ -222,9 +222,9 @@ void generate_compressed_matrix_lu_backward(StringT & source, std::string const 
   source.append("  __global "); source.append(numeric_string); source.append(" * vector, \n");
   source.append("  unsigned int size) \n");
   source.append("{ \n");
-  source.append("  __local unsigned int col_index_buffer[128]; \n");
-  source.append("  __local "); source.append(numeric_string); source.append(" element_buffer[128]; \n");
-  source.append("  __local "); source.append(numeric_string); source.append(" vector_buffer[128]; \n");
+  source.append("  __local unsigned int col_index_buffer[256]; \n");
+  source.append("  __local "); source.append(numeric_string); source.append(" element_buffer[256]; \n");
+  source.append("  __local "); source.append(numeric_string); source.append(" vector_buffer[256]; \n");
 
   source.append("  unsigned int nnz = row_indices[size]; \n");
   source.append("  unsigned int current_row = size-1; \n");
@@ -306,9 +306,9 @@ void generate_compressed_matrix_lu_forward(StringT & source, std::string const &
   source.append("  __global "); source.append(numeric_string); source.append(" * vector, \n");
   source.append("  unsigned int size) \n");
   source.append("{ \n");
-  source.append("  __local unsigned int col_index_buffer[128]; \n");
-  source.append("  __local "); source.append(numeric_string); source.append(" element_buffer[128]; \n");
-  source.append("  __local "); source.append(numeric_string); source.append(" vector_buffer[128]; \n");
+  source.append("  __local unsigned int col_index_buffer[256]; \n");
+  source.append("  __local "); source.append(numeric_string); source.append(" element_buffer[256]; \n");
+  source.append("  __local "); source.append(numeric_string); source.append(" vector_buffer[256]; \n");
 
   source.append("  unsigned int nnz = row_indices[size]; \n");
   source.append("  unsigned int current_row = 0; \n");
@@ -750,9 +750,9 @@ void generate_compressed_matrix_unit_lu_backward(StringT & source, std::string c
   source.append("  __global "); source.append(numeric_string); source.append(" * vector, \n");
   source.append("  unsigned int size) \n");
   source.append("{ \n");
-  source.append("  __local  unsigned int col_index_buffer[128]; \n");
-  source.append("  __local  "); source.append(numeric_string); source.append(" element_buffer[128]; \n");
-  source.append("  __local  "); source.append(numeric_string); source.append(" vector_buffer[128]; \n");
+  source.append("  __local  unsigned int col_index_buffer[256]; \n");
+  source.append("  __local  "); source.append(numeric_string); source.append(" element_buffer[256]; \n");
+  source.append("  __local  "); source.append(numeric_string); source.append(" vector_buffer[256]; \n");
 
   source.append("  unsigned int nnz = row_indices[size]; \n");
   source.append("  unsigned int current_row = size-1; \n");
@@ -831,9 +831,9 @@ void generate_compressed_matrix_unit_lu_forward(StringT & source, std::string co
   source.append("  __global "); source.append(numeric_string); source.append(" * vector, \n");
   source.append("  unsigned int size) \n");
   source.append("{ \n");
-  source.append("  __local  unsigned int col_index_buffer[128]; \n");
-  source.append("  __local  "); source.append(numeric_string); source.append(" element_buffer[128]; \n");
-  source.append("  __local  "); source.append(numeric_string); source.append(" vector_buffer[128]; \n");
+  source.append("  __local  unsigned int col_index_buffer[256]; \n");
+  source.append("  __local  "); source.append(numeric_string); source.append(" element_buffer[256]; \n");
+  source.append("  __local  "); source.append(numeric_string); source.append(" vector_buffer[256]; \n");
 
   source.append("  unsigned int nnz = row_indices[size]; \n");
   source.append("  unsigned int current_row = 0; \n");

@@ -42,10 +42,10 @@ namespace viennacl
   {
 	  struct arg_ref
 	  {
-		  arg_ref() : local(false), size(0), val(0), ptr(0) {}
+		  arg_ref() : local(false), size(0),  ptr(0) { memset(val, 0, sizeof(val));}
 		  bool local;
 		  size_t size;
-		  uint64_t val;
+		  uint64_t val[2];
 		  void* ptr;
 	  };
   public:
@@ -74,10 +74,10 @@ namespace viennacl
 		  }
 		  else
 		  {
-			  assert( sizeof(T) <= sizeof(uint64_t));
+			  //assert( sizeof(T) <= sizeof(uint64_t) || sizeof(T) == sizeof(packed_cl_uint));
 			  ref.local = false;
 			  ref.size = std::max(sizeof(T), sizeof(uint8_t));
-			  memcpy(&ref.val, &value, sizeof(value));
+			  memcpy(ref.val, &value, sizeof(value));
 		  }
 	  }
 	  void set_local(size_t offset, size_t size)
@@ -121,7 +121,7 @@ std::cout << "ViennaCL: pos  "<< i << " Global Mem  size " << ref.size  << std::
 				  while ((cur_offset % ref.size) != 0)
 					  ++cur_offset;
 				  ref.ptr = ptr_ + cur_offset;
-				  memcpy(ref.ptr, &ref.val, ref.size);
+				  memcpy(ref.ptr, ref.val, ref.size);
 				  cur_offset += ref.size;
 			  }
 			  else
@@ -300,7 +300,7 @@ std::cout << "ViennaCL: End of Finalization"<< std::endl;
       }
 
       /** @brief Sets four packed unsigned integers as argument at the provided position */
-      void arg(unsigned int pos, packed_cl_uint val)
+      void arg(unsigned int pos, const packed_cl_uint& val)
       {
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
         std::cout << "ViennaCL: Setting packed_cl_uint kernel argument (" << val.start << ", " << val.stride << ", " << val.size << ", " << val.internal_size << ") at pos " << pos << " for kernel " << name_ << std::endl;
@@ -353,9 +353,28 @@ std::cout << "ViennaCL: End of Finalization"<< std::endl;
         arg_buffer_.set(pos,val);
       }
 
+      template <typename T>
+      void arg(unsigned int pos, viennacl::vector_base<T> const& h )
+      {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: Setting vector kernel argument " << h << " at pos " << pos << " for kernel " << name_ << std::endl;
+#endif
+
+     	 arg( pos , h.handle().hsa_handle());
+      }
+
+      void arg(unsigned int pos, void const * val)
+      {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: Setting pointer kernel argument " << val << " at pos " << pos << " for kernel " << name_ << std::endl;
+#endif
+		arg_buffer_.set(pos,val);
+
+      }
+
       //generic handling: call .handle() member
       /** @brief Sets an OpenCL memory object at the provided position */
-      template<class VCL_TYPE>
+      /*template<class VCL_TYPE>
       void arg(unsigned int pos, VCL_TYPE const & val)
       {
         #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
@@ -363,7 +382,8 @@ std::cout << "ViennaCL: End of Finalization"<< std::endl;
         #endif
         arg_buffer_.set(pos,val);
 
-      }
+      }*/
+
 
       //forward handles directly:
       /** @brief Sets an OpenCL object at the provided position */
@@ -371,9 +391,9 @@ std::cout << "ViennaCL: End of Finalization"<< std::endl;
 	{
 	 const void* temp = h.get().get();
 	 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-	 std::cout << "ViennaCL: Setting handle kernel argument " << temp << " at pos " << pos << " for kernel " << name_ << std::endl;
+	 std::cout << "ViennaCL: Setting handle pointer kernel argument " << temp << " at pos " << pos << " for kernel " << name_ << std::endl;
 	 #endif
-	 arg_buffer_.set(pos,temp);
+	 arg(pos,temp);
 	}
 
       template<class CL_TYPE>

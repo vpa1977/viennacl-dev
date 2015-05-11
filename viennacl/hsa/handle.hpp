@@ -136,9 +136,13 @@ struct hsa_code
 template<>
 struct handle_release_helper<hsa_code> {
 	static void release(hsa_code& ptr) {
-		hsa_executable_destroy( ptr.executable_ );
-		hsa_code_object_destroy( ptr.code_object_ );
-
+		if (ptr.executable_.handle)
+		{
+			hsa_executable_destroy( ptr.executable_ );
+			ptr.executable_.handle = 0;
+			hsa_code_object_destroy( ptr.code_object_ );
+			ptr.code_object_.handle = 0;
+		}
 	}
 };
 
@@ -162,6 +166,7 @@ template<>
 struct handle_release_helper<hsa_queue_t*> {
 	static void release(hsa_queue_t* const & h) {
 		hsa_queue_destroy(h);
+
 	}
 };
 

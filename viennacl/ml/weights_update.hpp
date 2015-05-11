@@ -29,10 +29,32 @@
 #include "viennacl/ml/hsa/weights_update.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_OPENCL
+#include "viennacl/ml/opencl/weights_update.hpp"
+#endif
+
+
 namespace viennacl
 {
 namespace ml
 {
+
+	template <typename T>
+	void sgd_compute_factors(const  viennacl::vector_base<T>& classes, const viennacl::vector_base<T>& prod_result, viennacl::vector_base<T>& factors, bool is_nominal, int loss, double learning_rate, double bias)
+	{
+		 switch (viennacl::traits::handle(classes).get_active_handle_id())
+		 {
+#ifdef VIENNACL_WITH_OPENCL
+        case viennacl::OPENCL_MEMORY:
+        	viennacl::ml::opencl::sgd_compute_factors(classes, prod_result, factors, is_nominal, loss, learning_rate, bias);
+          break;
+#endif
+        default:
+        	throw memory_exception("not implemented");
+		 }
+
+	}
+
 
 	template <typename T>
 	void sgd_update_weights( viennacl::vector_base<T>& weights, const viennacl::compressed_matrix<T>& batch, const viennacl::vector_base<T>& factors)
@@ -44,7 +66,7 @@ namespace ml
 	          break;
 	#ifdef VIENNACL_WITH_OPENCL
 	        case viennacl::OPENCL_MEMORY:
-	        	 throw memory_exception("not implemented");
+	        	viennacl::ml::opencl::sgd_update_weights(weights,batch,factors);
 	          break;
 	#endif
 	#ifdef VIENNACL_WITH_HSA

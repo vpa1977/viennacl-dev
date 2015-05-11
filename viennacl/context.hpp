@@ -69,7 +69,7 @@ public:
       ocl_context_ptr_ = NULL;
 #endif
 
-#ifdef VIENNACL_WITH_OPENCL
+#ifdef VIENNACL_WITH_HSA
     if (mem_type_ == HSA_MEMORY)
       hsa_context_ptr_ = &viennacl::hsa::current_context();
     else

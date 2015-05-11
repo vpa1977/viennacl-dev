@@ -48,6 +48,10 @@ void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::endl;
 #endif
 
+#if defined(VIENNACL_DEBUG_KERNEL_DRYRUN)
+	return;
+#endif
+
 	hsa_signal_create(1,0,NULL,&signal);
 
 	// get command queue from context
@@ -58,8 +62,6 @@ std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::en
 	aql.header = HSA_PACKET_TYPE_KERNEL_DISPATCH;
     aql.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
     aql.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
-
-
 
 	// setup dispatch sizes
 	size_t dimensions = 1;
@@ -112,6 +114,10 @@ std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::en
 	hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t)-1, HSA_WAIT_STATE_ACTIVE);
 
 	hsa_signal_destroy(signal);
+
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: Completed " << kernel.name() << std::endl;
+#endif
 } //enqueue()
 
 /** @brief Convenience function that enqueues the provided kernel into the first queue of the currently active device in the currently active context */

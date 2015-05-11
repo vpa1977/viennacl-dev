@@ -71,7 +71,7 @@ namespace viennacl
 				command += " ";
 				command += name;
 				system(command.c_str());
-				remove(name.c_str());
+				//remove(name.c_str());
 
 				name = buffer;
 				name += ".hsail";

@@ -33,8 +33,7 @@ public:
 	enum LossFunction {
 		HINGE, LOGLOSS, SQUAREDLOSS
 	};
-	sgd_template(size_t len, LossFunction loss, bool nominal = true,
-			viennacl::context ctx = viennacl::context()) :
+	sgd_template(size_t len, LossFunction loss,viennacl::context& ctx, bool nominal = true ) :
 			loss_(loss), context_(ctx), weights_(len, ctx) {
 		learning_rate_ = 0.01;
 		lambda_ = 0.0001;
@@ -81,8 +80,7 @@ public:
 	void train(const viennacl::vector<double>& class_values,
 			const sgd_matrix_type& batch) {
 		assert(batch.size2() == weights_.size());
-		viennacl::vector<double> result = viennacl::linalg::prod(batch,
-				weights_);
+		viennacl::vector<double> result = viennacl::linalg::prod(batch,	weights_);
 
 		switch (context_.memory_type()) {
 		case viennacl::MAIN_MEMORY:
@@ -92,7 +90,8 @@ public:
 			break;
 #ifdef VIENNACL_WITH_OPENCL
 		case viennacl::OPENCL_MEMORY:
-			throw memory_exception("not implemented");
+			decay_weights_cpu(class_values.size());
+			update_weights_opencl(nominal_, class_values, result, batch);
 			break;
 #endif
 #ifdef VIENNACL_WITH_HSA
@@ -108,21 +107,8 @@ public:
 	}
 
 	void decay_weights_cpu(size_t batch_size) {
-		double* weights_ptr =
-				viennacl::linalg::host_based::detail::extract_raw_pointer<double>(
-						weights_);
-		size_t size_w = viennacl::traits::size(weights_);
-		size_t start_w = viennacl::traits::start(weights_);
-		size_t stride_w = viennacl::traits::stride(weights_);
 		double multiplier = 1.0 - (learning_rate_ * lambda_) / batch_size;
-
-#ifdef VIENNACL_WITH_OPENMP
-#pragma omp parallel for if (size > VIENNACL_OPENMP_VECTOR_MIN_SIZE)
-#endif
-		for (long i = 0; i < static_cast<long>(size_w); ++i) {
-			size_t offset = i * stride_w + start_w;
-			weights_ptr[offset] = weights_ptr[offset] * multiplier;
-		}
+		weights_ = weights_ * multiplier;
 	}
 
 	void update_weights_cpu(bool nominal,
@@ -211,6 +197,21 @@ public:
 	}
 
 #ifdef VIENNACL_WITH_OPENCL
+	void update_weights_opencl(bool nominal,
+			const viennacl::vector<double>& class_values,
+			const viennacl::vector<double>& prod_result,
+			const sgd_matrix_type& batch) {
+
+		viennacl::vector<double> factors(class_values.size(), get_global_context());
+		sgd_compute_factors<double>(class_values, prod_result,factors, nominal,(int) loss_, learning_rate_, bias_);
+		sgd_update_weights<double>(weights_, batch, factors);
+
+		double sum = 0;
+/*		for (long i = 0; i < static_cast<long>(size); ++i) {
+			sum += factors[i];
+		}*/
+		bias_ += sum;
+	}
 
 #endif
 #ifdef VIENNACL_WITH_HSA
@@ -253,7 +254,7 @@ public:
 	const bool is_nominal() const { return nominal_; }
 private:
 	LossFunction loss_;
-	viennacl::context context_;
+	viennacl::context& context_;
 	viennacl::vector<double> weights_;
 	double learning_rate_;
 	double lambda_;
