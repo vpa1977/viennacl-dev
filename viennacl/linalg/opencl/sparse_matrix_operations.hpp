@@ -117,11 +117,13 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & A,
     if (ctx.current_device().max_work_group_size() >= 256)
       k.local_work_size(0, 256);
     k.global_work_size(0, A.blocks1() * k.local_work_size(0));
-
-    viennacl::ocl::enqueue(k(A.handle1().opencl_handle(), A.handle2().opencl_handle(), A.handle3().opencl_handle(), A.handle().opencl_handle(), cl_uint(A.blocks1()),
-                             x, layout_x,
-                             y, layout_y
-                            ));
+    if (k.global_work_size(0) > 0 )
+		viennacl::ocl::enqueue(k(A.handle1().opencl_handle(), A.handle2().opencl_handle(), A.handle3().opencl_handle(), A.handle().opencl_handle(), cl_uint(A.blocks1()),
+								 x, layout_x,
+								 y, layout_y
+								));
+    else
+    	y.clear(); // 0 matrix by vector results in 0 vector
   }
 }
 

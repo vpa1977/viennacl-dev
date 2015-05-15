@@ -12,7 +12,7 @@
 #include <viennacl/matrix.hpp>
 #include <viennacl/vector.hpp>
 #include <viennacl/scalar.hpp>
-
+#include <viennacl/linalg/reduce.hpp>
 #include <viennacl/linalg/vector_operations.hpp>
 #include <viennacl/linalg/matrix_operations.hpp>
 #include <viennacl/linalg/inner_prod.hpp>
@@ -33,8 +33,8 @@ public:
 	enum LossFunction {
 		HINGE, LOGLOSS, SQUAREDLOSS
 	};
-	sgd_template(size_t len, LossFunction loss,viennacl::context& ctx, bool nominal = true ) :
-			loss_(loss), context_(ctx), weights_(len, ctx) {
+	sgd_template(size_t len, size_t batch_size, LossFunction loss,viennacl::context& ctx, bool nominal = true ) :
+			loss_(loss), context_(ctx), weights_(len, ctx), factors_(batch_size, ctx), prod_result_(batch_size, ctx) {
 		learning_rate_ = 0.01;
 		lambda_ = 0.0001;
 		nominal_ = nominal;
@@ -80,24 +80,26 @@ public:
 	void train(const viennacl::vector<double>& class_values,
 			const sgd_matrix_type& batch) {
 		assert(batch.size2() == weights_.size());
-		viennacl::vector<double> result = viennacl::linalg::prod(batch,	weights_);
+		prod_result_ = viennacl::linalg::prod(batch,	weights_);
+		if (true)
+			return;
 
 		switch (context_.memory_type()) {
 		case viennacl::MAIN_MEMORY:
 			decay_weights_cpu(class_values.size());
-			update_weights_cpu(nominal_, class_values, result, batch);
+			update_weights_cpu(nominal_, class_values, prod_result_, batch);
 
 			break;
 #ifdef VIENNACL_WITH_OPENCL
 		case viennacl::OPENCL_MEMORY:
 			decay_weights_cpu(class_values.size());
-			update_weights_opencl(nominal_, class_values, result, batch);
+			update_weights_opencl(nominal_, class_values, prod_result_, batch);
 			break;
 #endif
 #ifdef VIENNACL_WITH_HSA
 		case viennacl::HSA_MEMORY:
 			decay_weights_cpu(class_values.size());
-			update_weights_cpu(nominal_, class_values, result, batch);
+			update_weights_cpu(nominal_, class_values, prod_result_, batch);
 			break;
 #endif
 		default:
@@ -115,13 +117,13 @@ public:
 			const viennacl::vector<double>& class_values,
 			const viennacl::vector<double>& prod_result,
 			const sgd_matrix_type& batch) {
-		viennacl::vector<double> factors(class_values.size(), viennacl::context(viennacl::MAIN_MEMORY));
+
 		const double* class_values_ptr =
 				viennacl::linalg::host_based::detail::extract_raw_pointer<double>(
 						class_values);
 		double * factors_ptr =
 				viennacl::linalg::host_based::detail::extract_raw_pointer<double>(
-						factors);
+						factors_);
 
 		size_t size_class = viennacl::traits::size(class_values);
 		size_t start_class = viennacl::traits::start(class_values);
@@ -173,7 +175,7 @@ public:
 			}
 		}
 
-		sgd_update_weights<double>(weights_, batch, factors);
+		sgd_update_weights<sgd_matrix_type>(weights_, batch, factors_);
 
 #ifdef VIENNACL_WITH_OPENMP
 #pragma omp parallel for if (size > VIENNACL_OPENMP_VECTOR_MIN_SIZE)
@@ -202,14 +204,9 @@ public:
 			const viennacl::vector<double>& prod_result,
 			const sgd_matrix_type& batch) {
 
-		viennacl::vector<double> factors(class_values.size(), get_global_context());
-		sgd_compute_factors<double>(class_values, prod_result,factors, nominal,(int) loss_, learning_rate_, bias_);
-		sgd_update_weights<double>(weights_, batch, factors);
-
-		double sum = 0;
-/*		for (long i = 0; i < static_cast<long>(size); ++i) {
-			sum += factors[i];
-		}*/
+		sgd_compute_factors<double>(class_values, prod_result,factors_, nominal,(int) loss_, learning_rate_, bias_);
+		sgd_update_weights<sgd_matrix_type>(weights_, batch, factors_);
+		double sum = sgd_reduce<double>(factors_);
 		bias_ += sum;
 	}
 
@@ -256,12 +253,16 @@ private:
 	LossFunction loss_;
 	viennacl::context& context_;
 	viennacl::vector<double> weights_;
+	viennacl::vector<double> factors_;
+	viennacl::vector<double> prod_result_;
 	double learning_rate_;
 	double lambda_;
 	double bias_;
 	bool nominal_;
 	size_t instance_size_;
 };
+
+
 
 typedef sgd_template<viennacl::compressed_matrix<double> > sgd;
 

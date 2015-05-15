@@ -43,16 +43,17 @@ namespace opencl
 
 
 		//(int N, bool nominal,int loss, double learning_rate, double bias, __global double* class_values, __global double* prod_values, __global double* factor)
-		viennacl::ocl::enqueue(sgd_map_prod_value(classes.size(), (cl_bool)is_nominal, loss,  learning_rate, bias, classes.handle().opencl_handle(), prod_result.handle().opencl_handle(),
+		cl_ulong size = classes.size();
+		viennacl::ocl::enqueue(sgd_map_prod_value(size, (cl_uint)is_nominal,(cl_uint) loss, (cl_double) learning_rate,  (cl_double)bias, classes.handle().opencl_handle(), prod_result.handle().opencl_handle(),
 				factors.handle().opencl_handle()
 				));
 
 	};
 
-	template <typename T>
-	void sgd_update_weights(viennacl::vector_base<T>& weights, const viennacl::compressed_matrix<T>& batch, const viennacl::vector_base<T>& factors)
+	template <typename sgd_matrix_type, typename T =double>
+	void sgd_update_weights(viennacl::vector_base<T>& weights, const sgd_matrix_type& batch, const viennacl::vector_base<T>& factors)
 	{
-		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
+	/*	viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
 		sgd_kernels<double>::init(ctx);
 		static viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(sgd_kernels<T>::program_name(), "sgd_update_weights");
 		update_by_factor_kernel.local_work_size(0, 256);
@@ -60,7 +61,7 @@ namespace opencl
 		//double* elements,double * factors, int* rows, int * columns)
 		viennacl::ocl::enqueue(update_by_factor_kernel(batch.size1(), batch.handle().opencl_handle(), factors.handle().opencl_handle(), batch.handle1().opencl_handle(),
 				batch.handle2().opencl_handle()));
-
+*/
 		/*viennacl::vector<T> intermediate_sum(weights.size());
 		T   const * elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(batch.handle());
 		unsigned int const * row_buffer =viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(batch.handle1());

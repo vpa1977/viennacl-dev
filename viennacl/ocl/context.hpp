@@ -241,6 +241,8 @@ public:
     queues_[dev].back().handle().inc();
   }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   /** @brief Adds a queue for the given device to the context */
   void add_queue(cl_device_id dev)
   {
@@ -248,15 +250,31 @@ public:
     std::cout << "ViennaCL: Adding new queue for device " << dev << " to context " << h_ << std::endl;
 #endif
       cl_int err;
+
 #ifdef VIENNACL_PROFILING_ENABLED
-    viennacl::ocl::handle<cl_command_queue> temp(clCreateCommandQueue(h_.get(), dev, CL_QUEUE_PROFILING_ENABLE, &err), *this);
+    cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
 #else
-    viennacl::ocl::handle<cl_command_queue> temp(clCreateCommandQueue(h_.get(), dev, 0, &err), *this);
+    cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
 #endif
+	cl_command_queue q = clCreateCommandQueueWithProperties(h_.get(), dev, qprop, &err);
+    VIENNACL_ERR_CHECK(err);
+	viennacl::ocl::handle<cl_command_queue> temp(q, *this);
     VIENNACL_ERR_CHECK(err);
 
     queues_[dev].push_back(viennacl::ocl::command_queue(temp));
+
+#ifdef VIENNACL_WITH_OPENCL20
+    {
+    	cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, (CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT ),
+    			CL_QUEUE_SIZE, 128*1024, 0}; // CL_QUEUE_ON_DEVICE
+    	cl_command_queue my_device_q = clCreateCommandQueueWithProperties(h_.get(), dev, qprop, &err);
+        VIENNACL_ERR_CHECK(err);
+    	viennacl::ocl::handle<cl_command_queue> temp(my_device_q, *this);
+    	queues_[dev].push_back(viennacl::ocl::command_queue(temp));
+    }
+#endif
   }
+#pragma GCC diagnostic pop
 
   /** @brief Adds a queue for the given device to the context */
   void add_queue(viennacl::ocl::device d) { add_queue(d.id()); }

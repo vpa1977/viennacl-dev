@@ -46,6 +46,8 @@ namespace ocl
 {
 
 /** @brief Enqueues a kernel in the provided queue */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 template<typename KernelType>
 void enqueue(KernelType & k, viennacl::ocl::command_queue const & queue)
 {
@@ -124,7 +126,7 @@ void enqueue(KernelType & k, viennacl::ocl::command_queue const & queue)
   std::cout << "ViennaCL: Kernel " << k.name() << " finished with status " << execution_status << "!" << std::endl;
 #endif
 } //enqueue()
-
+#pragma GCC diagnostic pop
 
 /** @brief Convenience function that enqueues the provided kernel into the first queue of the currently active device in the currently active context */
 template<typename KernelType>

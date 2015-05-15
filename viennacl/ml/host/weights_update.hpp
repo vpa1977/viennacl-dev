@@ -31,10 +31,10 @@ namespace ml
 namespace host
 {
 
-	template <typename T>
-	void sgd_update_weights(viennacl::vector_base<T>& weights, const viennacl::compressed_matrix<T>& batch, const viennacl::vector_base<T>& factors)
+	template <typename sgd_matrix_type, typename T = double>
+	void sgd_update_weights(viennacl::vector_base<T>& weights, const sgd_matrix_type& batch, const viennacl::vector_base<T>& factors)
 	{
-		  T         * result_buf = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(weights);
+		/*  T         * result_buf = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(weights);
 		  T   const * elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(batch.handle());
 		  T   const * factors_buf    = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(factors);
 		  unsigned int const * row_buffer =viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(batch.handle1());
@@ -49,7 +49,7 @@ namespace host
 			{
 				result_buf[ col_buffer[i] ] += elements[i] * factors_buf[row];
 			}
-		  }
+		  }*/
 	}
 }
 

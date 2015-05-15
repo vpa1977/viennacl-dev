@@ -86,6 +86,13 @@ public:
     assert(mem_type_ == OPENCL_MEMORY && bool("Context type is not OpenCL"));
     return *ocl_context_ptr_;
   }
+
+  // temporary !!! remove later !!! - used to set build options for opencl code.
+  viennacl::ocl::context* opencl_pcontext()
+    {
+      assert(mem_type_ == OPENCL_MEMORY && bool("Context type is not OpenCL"));
+      return const_cast<viennacl::ocl::context*>(ocl_context_ptr_);
+    }
 #endif
 
 #ifdef VIENNACL_WITH_HSA

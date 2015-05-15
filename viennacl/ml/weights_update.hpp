@@ -55,9 +55,39 @@ namespace ml
 
 	}
 
+	template <typename T=double>
+	double sgd_reduce( viennacl::vector_base<T>& v)
+	{
+	      switch (viennacl::traits::handle(v).get_active_handle_id())
+	      {
+	        case viennacl::MAIN_MEMORY:
+	        	throw memory_exception("not implemented");
+	          break;
+	#ifdef VIENNACL_WITH_OPENCL
+	        case viennacl::OPENCL_MEMORY:
+	        	throw memory_exception("not implemented");
+	          break;
+	#endif
+	#ifdef VIENNACL_WITH_HSA
+	        case viennacl::HSA_MEMORY:
+	        	throw memory_exception("not implemented");
+	          break;
+	#endif
 
-	template <typename T>
-	void sgd_update_weights( viennacl::vector_base<T>& weights, const viennacl::compressed_matrix<T>& batch, const viennacl::vector_base<T>& factors)
+	#ifdef VIENNACL_WITH_CUDA
+	        case viennacl::CUDA_MEMORY:
+	        	 throw memory_exception("not implemented");
+	          break;
+	#endif
+	        case viennacl::MEMORY_NOT_INITIALIZED:
+	          throw memory_exception("not initialised!");
+	        default:
+	          throw memory_exception("not implemented");
+	      }
+	}
+
+	template <typename sgd_matrix_type,typename T=double>
+	void sgd_update_weights( viennacl::vector_base<T>& weights, const sgd_matrix_type& batch, const viennacl::vector_base<T>& factors)
 	{
 	      switch (viennacl::traits::handle(weights).get_active_handle_id())
 	      {

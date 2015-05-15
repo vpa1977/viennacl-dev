@@ -50,11 +50,11 @@ namespace viennacl
 							"                                         "
 							"  } while(group_offset < (binId+1) * bin_size);"
 							" }";
-				//	code.append(scan_inclusive);
+					code.append(scan_inclusive);
 
 					// for row = [0.. row_count] - update rows with factor results
 					const char* const sparse_matrix_by_constant = "\n"
-							"__kernel  void sgd_update_weights(int N, __global double* elements,__global double * factors, __global int* rows, __global int * columns)"
+							"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns)"
 							"{"
 							"    int id = get_global_id(0);  "
 							"    for (; id < N; id+= get_global_size(0)) "
@@ -71,7 +71,7 @@ namespace viennacl
 					code.append(sparse_matrix_by_constant);
 
 					const char* const map_prod_value_nominal ="\n"
-							"\n__kernel void sgd_map_prod_value(int N, int nominal,int loss_function, double learning_rate, double bias, __global double* class_values, __global double* prod_values, __global double* factor)\n"
+							"\n__kernel void sgd_map_prod_value(ulong N, uint nominal,uint loss_function, double learning_rate, double bias, __global double* class_values, __global double* prod_values, __global double* factor)\n"
 							"{\n"
 							"	int id = get_global_id(0);\n"
 							"   double y;                 "
