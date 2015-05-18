@@ -30,7 +30,7 @@
 #endif
 
 #ifdef VIENNACL_WITH_OPENCL
-#include "viennacl/ml/opencl/weights_update.hpp"
+#include <viennacl/ml/opencl/ml_helpers.hpp>
 #endif
 
 
@@ -61,11 +61,27 @@ namespace ml
 	      switch (viennacl::traits::handle(v).get_active_handle_id())
 	      {
 	        case viennacl::MAIN_MEMORY:
-	        	throw memory_exception("not implemented");
+	        {
+
+	        	double result = 0;
+	        	double * v_ptr =
+	        					viennacl::linalg::host_based::detail::extract_raw_pointer<T>(v);
+	        	size_t size = viennacl::traits::size(v);
+	        	size_t start = viennacl::traits::start(v);
+	        	size_t stride = viennacl::traits::stride(v);
+#ifdef VIENNACL_WITH_OPENMP
+#pragma omp parallel for if (size > VIENNACL_OPENMP_VE	CTOR_MIN_SIZE)
+#endif
+	        	for (long i = 0; i < static_cast<long>(size); ++i) {
+	        		size_t offset = i * stride + start;
+	        		result += v_ptr[offset];
+	        	}
+	        	return result;
+	        }
 	          break;
 	#ifdef VIENNACL_WITH_OPENCL
 	        case viennacl::OPENCL_MEMORY:
-	        	throw memory_exception("not implemented");
+	        	return viennacl::ml::opencl::reduce(v);
 	          break;
 	#endif
 	#ifdef VIENNACL_WITH_HSA

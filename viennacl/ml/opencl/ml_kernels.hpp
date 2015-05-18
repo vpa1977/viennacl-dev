@@ -17,11 +17,11 @@ namespace viennacl
 		namespace opencl
 		{
 			template< typename NumericT>
-			struct sgd_kernels
+			struct ml_helper_kernels
 			{
 				static std::string program_name()
 				{
-				    return "sgd_operations";
+				    return "ml_helpers";
 				}
 
 				static void init(viennacl::ocl::context& ctx)
@@ -33,8 +33,17 @@ namespace viennacl
 					std::string code;
 					code.reserve(1024);
 
+					const char* const pragmas =
+							"\n#pragma OPENCL EXTENSION cl_amd_printf : enable\n"
+							"\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n"
+							"\n#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable\n"
+							"\n#pragma OPENCL EXTENSION cl_khr_int64_extended_atomics : enable\n"
+							"\n#define WAVEFRONT_SIZE 64\n";
+					code.append(pragmas);
+
+
 					const char* const scan_inclusive =
-							"__kernel void scan_inclusive(__global const double* data, __global double* result, uint bin_size) "
+							"__kernel void create_histogram(__global const double* data, __global double* result, uint bin_size) "
 							"{ "
 							"  uint lid = get_local_id(0); "
 							"  uint binId = get_group_id(0); "
@@ -52,20 +61,66 @@ namespace viennacl
 							" }";
 					code.append(scan_inclusive);
 
+					const char* const reduce =
+							"\n__global volatile atomic_int global_barrier = ATOMIC_VAR_INIT(0); \n"
+							"\n__kernel void reduce(ulong N, __local double* local_buffer, __global const double* in, __global double* result)"
+							"{"
+							  "int barrier_unset = 0;"
+							  // Get our global thread ID
+							  "int id = get_global_id(0);"
+							  "const int lid = get_local_id(0);"
+							  "const int group_size = get_local_size(0);"
+							  "local_buffer[lid] = 0;"
+							  "for (int idx = id; idx < N; idx+= get_global_size(0))"
+							  "  local_buffer[lid]+= in[idx];"
+							  "double tmp =  local_buffer[lid];"
+							  "barrier(CLK_LOCAL_MEM_FENCE);"
+							  // local memory reduction
+							  "int i = group_size/2;"
+							  "for(; i>WAVEFRONT_SIZE; i >>= 1) {"
+								  "if(lid < i)"
+									  "local_buffer[lid] = tmp = tmp + local_buffer[lid + i];"
+								  "barrier(CLK_LOCAL_MEM_FENCE);"
+							  "}"
+							  // wavefront reduction
+							  "for(; i>0; i >>= 1) {"
+							  "	if(lid < i) "
+							  " 	local_buffer[lid] = tmp = tmp + local_buffer[lid + i];"
+							  "}"
+
+							  "if(lid==0) {"
+							  //"     if (get_global_id(0) == 0) result[0] = 0;"
+							  " 	while (!atomic_compare_exchange_weak(&global_barrier, &barrier_unset, 1))"
+							  "		{ barrier_unset = 0;}"
+							  " 	result[0] += tmp;"
+							  " 	atomic_exchange(&global_barrier, 0);"
+							  "}"
+							"}\n";
+					code.append(reduce);
+
+
 					// for row = [0.. row_count] - update rows with factor results
 					const char* const sparse_matrix_by_constant = "\n"
-							"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns)"
+							"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns, __global atomic_int* locks, __global double* output)"
 							"{"
+							"    int barrier_unset = 0; "
 							"    int id = get_global_id(0);  "
 							"    for (; id < N; id+= get_global_size(0)) "
-							"    {                                        "
-							"    	int start = rows[ id ];              "
-								"	int end = rows[ id +1];     "
-								"	for (int i = start; i < end; ++i)  "
-								"	{                                                                "
-								"		elements[i] = elements[i] * factors[id];       "
-								"	}                                                    "
-							"     }             "
+							"    {                "
+							"		if (factors[id] != 0)                "
+							"       {										"
+							"    		int start = rows[ id ];              "
+							"			int end = rows[ id +1];     "
+							"			for (int i = start; i < end; ++i)  "
+							"			{             "
+							"				int idx = columns[i];                          				         "
+								"			double upd = elements[i] * factors[id];       "
+							"				while (!atomic_compare_exchange_weak(&locks[idx], &barrier_unset, 1)) { barrier_unset = 0; }"
+							"				output[idx] += upd;\n"
+							"           	atomic_exchange(&locks[idx], 0); "
+							"	  	   }                                                    "
+							"       }             "
+							"    }"
 							"}\n";
 
 					code.append(sparse_matrix_by_constant);
@@ -81,7 +136,7 @@ namespace viennacl
 							"       if (nominal)\n"
 							"		{	"
 							"			y = select(-1,1, (int)class_values[id]); "
-							"			z = prod_values[id] * y + bias;"
+							"			z = y*(prod_values[id]  + bias);"
 							"		}"
 							"		else\n"
 							"		{"
@@ -110,7 +165,12 @@ namespace viennacl
 							"}\n";
 					code.append(map_prod_value_nominal);
 
+
+
+
 					ctx.add_program(code, program_name());
+
+
 
 
 				}

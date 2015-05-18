@@ -34,22 +34,16 @@ namespace host
 	template <typename sgd_matrix_type, typename T = double>
 	void sgd_update_weights(viennacl::vector_base<T>& weights, const sgd_matrix_type& batch, const viennacl::vector_base<T>& factors)
 	{
-		/*  T         * result_buf = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(weights);
-		  T   const * elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(batch.handle());
-		  T   const * factors_buf    = viennacl::linalg::host_based::detail::extract_raw_pointer<T>(factors);
-		  unsigned int const * row_buffer =viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(batch.handle1());
-		  unsigned int const * col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(batch.handle2());
-		#ifdef VIENNACL_WITH_OPENMP
-		  #pragma omp parallel for
-		#endif
-		  for (long row = 0; row < static_cast<long>(batch.size1()); ++row)
-		  {
-			vcl_size_t row_end = row_buffer[row+1];
-			for (vcl_size_t i = row_buffer[row]; i < row_end; ++i)
-			{
-				result_buf[ col_buffer[i] ] += elements[i] * factors_buf[row];
+#ifdef VIENNACL_WITH_OPENMP
+#pragma omp parallel for if (size > VIENNACL_OPENMP_VECTOR_MIN_SIZE)
+#endif
+		for (long i = 0; i < static_cast<long>(factors.size()); ++i) {
+			if (factors(i)) {
+				const viennacl::vector<double>& row = viennacl::row(batch, i);
+				weights += factors(i) * row;
 			}
-		  }*/
+		}
+
 	}
 }
 

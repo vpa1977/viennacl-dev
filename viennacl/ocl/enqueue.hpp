@@ -76,9 +76,9 @@ void enqueue(KernelType & k, viennacl::ocl::command_queue const & queue)
 #endif
     else
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, &tmp_local, 0, NULL, &event);
+      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, tmp_local == 0 ? NULL : &tmp_local, 0, NULL, &event);
 #else
-      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, &tmp_local, 0, NULL, NULL);
+      err = clEnqueueNDRangeKernel(queue.handle().get(), k.handle().get(), 1, NULL, &tmp_global, tmp_local == 0 ? NULL : &tmp_local, 0, NULL, NULL);
 #endif
 
     if (err != CL_SUCCESS)
