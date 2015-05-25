@@ -48,7 +48,7 @@ public:
   /** @brief Returns the current active context */
   static viennacl::ocl::context & context(long id)
   {
-    if (!initialized_[id])
+    if (initialized_.find(id) == initialized_.end())
     {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
       std::cout << "ViennaCL: Initializing context no. " << id << std::endl;
