@@ -223,6 +223,16 @@ namespace viennacl
         VIENNACL_ERR_CHECK(err);
       }
 
+#ifdef VIENNACL_WITH_OPENCL20
+      void svmArg(unsigned int pos, void* val)
+      {
+		#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+		std::cout << "ViennaCL: Setting svm kernel argument " << val << " at pos " << pos << " for kernel " << name_ << std::endl;
+		#endif
+		cl_int err =  clSetKernelArgSVMPointer (handle_.get(), pos,val);
+    	VIENNACL_ERR_CHECK(err);
+      }
+#endif
       //generic handling: call .handle() member
       /** @brief Sets an OpenCL memory object at the provided position */
       template<class VCL_TYPE>

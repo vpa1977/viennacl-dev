@@ -254,7 +254,7 @@ public:
 #ifdef VIENNACL_PROFILING_ENABLED
     cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
 #else
-    cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
+    cl_queue_properties qprop[] = {0};
 #endif
 	cl_command_queue q = clCreateCommandQueueWithProperties(h_.get(), dev, qprop, &err);
     VIENNACL_ERR_CHECK(err);
@@ -263,6 +263,8 @@ public:
 
     queues_[dev].push_back(viennacl::ocl::command_queue(temp));
 
+    // commented out device queue - it is slow anyway
+    /*
 #ifdef VIENNACL_WITH_OPENCL20
     {
     	cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, (CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT ),
@@ -273,6 +275,7 @@ public:
     	queues_[dev].push_back(viennacl::ocl::command_queue(temp));
     }
 #endif
+	*/
   }
 #pragma GCC diagnostic pop
 

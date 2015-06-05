@@ -16,7 +16,6 @@ namespace viennacl
 	{
 		namespace opencl
 		{
-			template< typename NumericT>
 			struct ml_helper_kernels
 			{
 				static std::string program_name()
