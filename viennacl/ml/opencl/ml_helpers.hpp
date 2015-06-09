@@ -84,12 +84,15 @@ namespace opencl
 
 	struct knn_kernels
 	{
+		static void bitonic_sort(viennacl::vector<double>& result)
+		{}
 
 
 		static void calc_distance(viennacl::vector<double>& result,const viennacl::ml::knn::dense_sliding_window& sliding_window, int start_row, int end_row, const viennacl::vector<double>& sample)
 		{
 			const viennacl::matrix<double> samples = sliding_window.m_values_window;
 			const viennacl::vector<int> types =  sliding_window.m_attribute_types;
+
 			viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(samples).context());
 
 			ml_helper_kernels::init(ctx);
@@ -97,13 +100,27 @@ namespace opencl
 			static viennacl::ocl::kernel& calc_distance_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "knn_calc_distance");
 
 			calc_distance_kernel.local_work_size(0, 256);
-			calc_distance_kernel.global_work_size(0, 6 * 256 * 6);
+			int global_size = std::min( 6*256 * 6, end_row - start_row);
+			if (global_size % 256 != 0)
+				global_size = (global_size/256+1)*256;
+			calc_distance_kernel.global_work_size(0,global_size );
 
 			//double* elements,double * factors, int* rows, int * columns)
 			viennacl::ocl::enqueue(calc_distance_kernel(
 					start_row, // rows
 					end_row,
+					types.size(),
 					samples,
+					static_cast<cl_uint>(samples.start1()),
+					static_cast<cl_uint>(samples.start2()),
+                    static_cast<cl_uint>(samples.internal_size1()),
+					static_cast<cl_uint>(samples.internal_size2()),
+					static_cast<cl_uint>(samples.size1()),
+					static_cast<cl_uint>(samples.size2()),
+					static_cast<cl_uint>(samples.stride1()),
+					static_cast<cl_uint>(samples.stride2()),
+					sliding_window.m_min_range,
+					sliding_window.m_max_range,
 					types,
 					sample, // row indices vector
 					result

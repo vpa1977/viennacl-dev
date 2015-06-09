@@ -3,8 +3,10 @@
 #include <viennacl/forwards.h>
 #include <viennacl/context.hpp>
 #include <viennacl/vector.hpp>
+#include <viennacl/linalg/maxmin.hpp>
 #include <viennacl/matrix.hpp>
 #include <viennacl/ml/knn_sliding_window.hpp>
+#include <memory>
 
 #ifdef VIENNACL_WITH_OPENCL
 #include <viennacl/ml/opencl/ml_helpers.hpp>
@@ -55,7 +57,7 @@ namespace knn
 					break;
 		#ifdef VIENNACL_WITH_OPENCL
 				case viennacl::OPENCL_MEMORY:
-					throw memory_exception("Not Implemented");
+					update_bounds_viennacl(sliding_window);
 					break;
 		#endif
 		#ifdef VIENNACL_WITH_HSA
@@ -69,6 +71,19 @@ namespace knn
 				}
 		}
 	private:
+		void update_bounds_viennacl(dense_sliding_window& sliding_window)
+		{
+			for (size_t column = 0; column < sliding_window.m_values_window.size2(); ++column)
+			{
+				const viennacl::vector<double>& attributes = viennacl::column(sliding_window.m_values_window, column);
+
+				double d = viennacl::linalg::max(attributes);
+				sliding_window.m_max_range(column) = d;
+				d = viennacl::linalg::min(attributes);
+				sliding_window.m_min_range(column) = d;
+			}
+
+		}
 		void update_bounds_cpu(dense_sliding_window& sliding_window)
 		{
 			for (size_t column = 0; column < sliding_window.m_values_window.size2(); ++column)
@@ -90,7 +105,7 @@ namespace knn
 		}
 		void calc_distance_cpu(viennacl::vector<double>& result,const dense_sliding_window& sliding_window, int start_row, int end_row, const viennacl::vector<double>& sample)
 		{
-			for (int row = start_row ; row <= end_row; ++row)
+			for (int row = start_row ; row < end_row; ++row)
 				result(row) = point_distance(row, sliding_window, sample);
 		}
 
@@ -117,6 +132,38 @@ namespace knn
 		}
 	private:
 		viennacl::context& context_;
+
+	};
+
+
+	/**
+	 * KD-Tree design follows WEKA KD-tree
+	 */
+	struct kd_tree_node
+	{
+		dense_sliding_window data_;
+		std::shared_ptr<kd_tree_node> left_;
+		std::shared_ptr<kd_tree_node> *right_;
+	};
+
+	class kd_tree_node_splitter
+	{
+	public:
+		virtual void split(kd_tree_node& parent) = 0;
+	};
+
+
+	class kd_tree_knn : public naive_knn
+	{
+	public:
+		kd_tree_knn(viennacl::context& ctx) : naive_knn(ctx) {}
+
+		void build_tree(const dense_sliding_window& sliding_window)
+		{
+
+		}
+
+
 
 	};
 
