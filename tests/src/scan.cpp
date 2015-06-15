@@ -98,22 +98,23 @@ static void test_scan_values(viennacl::vector<ScalarType> const & input,
 }
 
 
-static void test_scans()
+static void test_scans(unsigned int sz)
 {
-  unsigned int sz = 12345;
   viennacl::vector<ScalarType> vec1(sz), vec2(sz);
-
 
   std::cout << "Initialize vector..." << std::endl;
   init_vector(vec1);
 
 
   // INCLUSIVE SCAN
-  std::cout << "Inclusive scan started!" << std::endl;
+  std::cout << " --- Inclusive scan ---" << std::endl;
+  std::cout << "Separate vectors: ";
   viennacl::linalg::inclusive_scan(vec1, vec2);
-  std::cout << "Inclusive scan finished!" << std::endl;
-  //vector_print(vec2);
-  std::cout << "Testing inclusive scan results..." << std::endl;
+  test_scan_values(vec1, vec2, true);
+
+  std::cout << "In-place: ";
+  vec2 = vec1;
+  viennacl::linalg::inclusive_scan(vec2);
   test_scan_values(vec1, vec2, true);
   std::cout << "Inclusive scan tested successfully!" << std::endl << std::endl;
 
@@ -123,10 +124,14 @@ static void test_scans()
   init_vector(vec1);
 
   // EXCLUSIVE SCAN
-  std::cout << "Exlusive scan started!" << std::endl;
+  std::cout << " --- Exclusive scan ---" << std::endl;
+  std::cout << "Separate vectors: ";
   viennacl::linalg::exclusive_scan(vec1, vec2);
-  std::cout << "Exclusive scan finished!" << std::endl;
-  std::cout << "Testing exclusive scan results..."  << std::endl;
+  test_scan_values(vec1, vec2, false);
+
+  std::cout << "In-place: ";
+  vec2 = vec1;
+  viennacl::linalg::exclusive_scan(vec2);
   test_scan_values(vec1, vec2, false);
   std::cout << "Exclusive scan tested successfully!" << std::endl << std::endl;
 
@@ -136,7 +141,14 @@ int main()
 {
 
   std::cout << std::endl << "----TEST INCLUSIVE and EXCLUSIVE SCAN----" << std::endl << std::endl;
-  test_scans();
+  std::cout << " //// Tiny vectors ////" << std::endl;
+  test_scans(27);
+  std::cout << " //// Small vectors ////" << std::endl;
+  test_scans(298);
+  std::cout << " //// Medium vectors ////" << std::endl;
+  test_scans(12345);
+  std::cout << " //// Large vectors ////" << std::endl;
+  test_scans(123456);
 
   std::cout << std::endl <<"--------TEST SUCCESSFULLY COMPLETED----------" << std::endl;
 }

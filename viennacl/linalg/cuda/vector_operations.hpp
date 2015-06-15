@@ -793,7 +793,7 @@ void vector_assign(vector_base<NumericT> & vec1, ScalarT1 const & alpha, bool up
                                      static_cast<unsigned int>(vec1.internal_size()),  //Note: Do NOT use traits::internal_size() here, because vector proxies don't require padding.
 
                                      detail::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)) );
-  VIENNACL_CUDA_LAST_ERROR_CHECK("avbv_v_kernel");
+  VIENNACL_CUDA_LAST_ERROR_CHECK("vector_assign_kernel");
 }
 
 //////////////////////////
@@ -3069,7 +3069,7 @@ __global__ void scan_kernel_1(NumericT const *X,
   for (unsigned int i = block_start + threadIdx.x; i < block_stop; i += blockDim.x)
   {
     // load data:
-    my_value = block_offset + ((i < sizeX) ? X[i * incX + startX] : 0);
+    my_value = (i < sizeX) ? X[i * incX + startX] : 0;
 
     // inclusive scan in shared buffer:
     for(unsigned int stride = 1; stride < blockDim.x; stride *= 2)
@@ -3084,20 +3084,21 @@ __global__ void scan_kernel_1(NumericT const *X,
     shared_buffer[threadIdx.x] = my_value;
     __syncthreads();
 
-    // write to output array
-    if (scan_offset + i < min(block_stop, sizeX))
-      Y[(i + scan_offset) * incY + startY] = my_value;
+    // exclusive scan requires us to write a zero value at the beginning of each block
+    if (scan_offset > 0)
+      my_value = (threadIdx.x > 0) ? shared_buffer[threadIdx.x - 1] : 0;
 
-    block_offset = (threadIdx.x == 0) ? shared_buffer[blockDim.x-1] : 0;
+    // write to output array
+    if (i < sizeX)
+      Y[i * incY + startY] = block_offset + my_value;
+
+    block_offset += shared_buffer[blockDim.x-1];
   }
 
   // write carry:
   if (threadIdx.x == 0)
     carries[blockIdx.x] = block_offset;
 
-  // exclusive scan requires us to write a zero value at the beginning of each block
-  if (threadIdx.x == 0 && scan_offset == 1 && block_start < sizeX)
-    Y[block_start * incY + startY] = 0;
 }
 
 // exclusive-scan of carries
@@ -3204,7 +3205,7 @@ namespace detail
 /** @brief This function implements an inclusive scan using CUDA.
 *
 * @param input       Input vector.
-* @param output      The output vector. Must be non-overlapping with input.
+* @param output      The output vector. Either idential to input or non-overlapping.
 */
 template<typename NumericT>
 void inclusive_scan(vector_base<NumericT> const & input,
@@ -3214,37 +3215,16 @@ void inclusive_scan(vector_base<NumericT> const & input,
 }
 
 
-/** @brief This function implements an in-place inclusive scan using CUDA.
-*
-* @param x       The vector to inclusive-scan
-*/
-template<typename NumericT>
-void inclusive_scan(vector_base<NumericT> & x)
-{
-  detail::scan_impl(x, x, true);
-}
-
 /** @brief This function implements an exclusive scan using CUDA.
 *
 * @param input       Input vector
-* @param output      The output vector. Must be non-overlapping with input
+* @param output      The output vector. Either idential to input or non-overlapping.
 */
 template<typename NumericT>
 void exclusive_scan(vector_base<NumericT> const & input,
                     vector_base<NumericT>       & output)
 {
   detail::scan_impl(input, output, false);
-}
-
-/** @brief This function implements an in-place exclusive scan using CUDA.
-*
-* @param input       Input vector
-* @param output      The output vector.
-*/
-template<typename NumericT>
-void exclusive_scan(vector_base<NumericT> & x)
-{
-  detail::scan_impl(x, x, false);
 }
 
 
