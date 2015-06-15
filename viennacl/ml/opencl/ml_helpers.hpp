@@ -19,6 +19,7 @@
 #include "viennacl/ml/opencl/ml_kernels.hpp"
 #include "viennacl/ml/knn_sliding_window.hpp"
 
+#define KAVERI_GLOBAL_SIZE (4*6+1)*256
 
 namespace viennacl
 {
@@ -30,11 +31,14 @@ namespace opencl
 	double reduce( viennacl::vector_base<T>& to_reduce)
 	{
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(to_reduce).context());
+
+		static int  global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
+
 		ml_helper_kernels::init(ctx);
 		viennacl::vector<T> reduce_result(1, ctx);
 		static viennacl::ocl::kernel& reduce = ctx.get_kernel(ml_helper_kernels::program_name(), "reduce");
-		reduce.local_work_size(0,256);
-		reduce.global_work_size(0, 6 * 256* 6);
+		reduce.local_work_size(0,ctx.current_device().max_work_group_size());
+		reduce.global_work_size(0, global_size);
 		viennacl::ocl::enqueue(reduce(to_reduce.size(), viennacl::ocl::local_mem(reduce.local_work_size(0) * sizeof(cl_double)),   to_reduce, reduce_result));
 		return reduce_result(0);
 
@@ -47,8 +51,9 @@ namespace opencl
 
 		ml_helper_kernels::init(ctx);
 		static viennacl::ocl::kernel& sgd_map_prod_value = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_map_prod_value");
-		sgd_map_prod_value.local_work_size(0, 256);
-		sgd_map_prod_value.global_work_size(0, 6 * 256 * 6);
+		static int  global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
+		sgd_map_prod_value.local_work_size(0, ctx.current_device().max_work_group_size());
+		sgd_map_prod_value.global_work_size(0, global_size);
 
 
 		//(int N, bool nominal,int loss, double learning_rate, double bias, __global double* class_values, __global double* prod_values, __global double* factor)
@@ -65,8 +70,9 @@ namespace opencl
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
 		ml_helper_kernels::init(ctx);
 		static viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
-		update_by_factor_kernel.local_work_size(0, 256);
-		update_by_factor_kernel.global_work_size(0, 6 * 256 * 6);
+		static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
+		update_by_factor_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
+		update_by_factor_kernel.global_work_size(0, global_size);
 		int columns = batch.size2();
 		viennacl::vector<int> locks(columns, ctx);
 		//double* elements,double * factors, int* rows, int * columns)
@@ -98,11 +104,8 @@ namespace opencl
 			ml_helper_kernels::init(ctx);
 
 			static viennacl::ocl::kernel& calc_distance_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "knn_calc_distance");
-
-			calc_distance_kernel.local_work_size(0, 256);
-			int global_size = std::min( 6*256 * 6, end_row - start_row);
-			if (global_size % 256 != 0)
-				global_size = (global_size/256+1)*256;
+			static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
+			calc_distance_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
 			calc_distance_kernel.global_work_size(0,global_size );
 
 			//double* elements,double * factors, int* rows, int * columns)
