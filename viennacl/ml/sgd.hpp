@@ -22,8 +22,199 @@
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/ml/weights_update.hpp>
 
+#include <atomic>
+#include <iostream>
+#include <ctime>
+#include <ratio>
+#include <chrono>
+
 namespace viennacl {
 namespace ml {
+
+class dense_sgd
+{
+public:
+	enum LossFunction {
+		HINGE, LOGLOSS, SQUAREDLOSS
+	};
+	dense_sgd(size_t len, size_t batch_size, LossFunction loss, viennacl::context& ctx, double learning_rate, double lambda, bool nominal = true ) :
+			loss_(loss), context_(ctx), weights_(len, ctx), factor_(0), prod_result_(0) {
+		learning_rate_ = learning_rate;
+		lambda_ = lambda;
+		nominal_ = nominal;
+		instance_size_ = len;
+		reset();
+	}
+
+	size_t instance_size()
+	{
+		return instance_size_;
+	}
+
+
+	void reset() {
+		weights_.clear();
+		bias_ = 0;
+	}
+
+	std::vector<double> get_votes_for_instance(
+			const viennacl::vector<double>& single_instance) {
+		switch (context_.memory_type()) {
+		case viennacl::MAIN_MEMORY:
+			return get_votes_for_instance_cpu(single_instance);
+			break;
+#ifdef VIENNACL_WITH_OPENCL
+		case viennacl::OPENCL_MEMORY:
+			return get_votes_for_instance_cpu(single_instance);
+			break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+		case viennacl::HSA_MEMORY:
+			return get_votes_for_instance_cpu(single_instance);
+			break;
+#endif
+		default:
+			throw memory_exception("Not implemented");
+
+		}
+		return std::vector<double>();
+	}
+
+	void train(const std::vector<double>& class_values, const std::vector<viennacl::vector<double> >& batch) {
+
+		using namespace std::chrono;
+
+		for (size_t row = 0; row < batch.size() ; ++row)
+		{
+			//system_clock::time_point t1 = system_clock::now();
+			prod_result_ = viennacl::linalg::inner_prod( batch.at(row),	weights_);
+			//system_clock::time_point t2 = system_clock::now();
+			switch (context_.memory_type()) {
+			case viennacl::HSA_MEMORY:
+			case viennacl::OPENCL_MEMORY:
+			case viennacl::MAIN_MEMORY:
+			{
+				//system_clock::time_point t3 = system_clock::now();
+				decay_weights_cpu(class_values.size());
+			//	system_clock::time_point t4 = system_clock::now();
+				update_weights_cpu(nominal_, class_values, prod_result_, batch.at(row), row);
+		//		system_clock::time_point t5 = system_clock::now();
+
+				/*duration<double> time_span1 = duration_cast<duration<double>>(t2 - t1);
+				duration<double> time_span2 = duration_cast<duration<double>>(t4 - t3);
+				duration<double> time_span3 = duration_cast<duration<double>>(t5 - t4);
+
+				std::cout << "Times : " << time_span1.count() << " " << time_span2.count() << " " << time_span3.count() << std::endl;
+				*/
+			}
+				break;
+			default:
+				throw memory_exception("not implemented");
+
+			}
+
+
+		}
+
+	}
+
+	void decay_weights_cpu(size_t batch_size) {
+		double multiplier = 1.0 - (learning_rate_ * lambda_) / batch_size;
+		weights_ = weights_ * multiplier;
+	}
+
+
+
+	void update_weights_cpu(bool nominal,const std::vector<double>& class_values,const viennacl::scalar<double>& prod_result, const viennacl::vector<double>& row_values, int row) {
+		double y;
+		double z;
+		if (nominal) {
+			y = class_values.at(row) ? 1 : -1;
+			z = y * (prod_result + bias_);
+		} else {
+			y = class_values.at(row);
+			z = y - (prod_result + bias_);
+
+		}
+		if (loss_ != HINGE || (z < 1)) {
+			double loss = 0;
+			switch (loss_) {
+			case HINGE:
+				loss = (z < 1) ? 1 : 0;
+				break;
+			case LOGLOSS:
+				if (z < 0) {
+					loss = 1.0 / (exp(z) + 1.0);
+				} else {
+					double t = exp(-z);
+					loss = t / (t + 1);
+				}
+				break;
+			case SQUAREDLOSS:
+			default:
+				assert(0);
+			}
+			factor_ = learning_rate_ * y * loss;
+			bias_ += factor_;
+		}
+		else
+		{
+			factor_ =0;
+		}
+		weights_+= factor_ * row_values;
+	}
+
+
+	std::vector<double> get_votes_for_instance_cpu(
+			const viennacl::vector<double>& instance) {
+
+		std::vector<double> res;
+
+		double wx =  viennacl::linalg::inner_prod(weights_, instance);
+		double z = wx + bias_;
+		if (!nominal_)
+			res.push_back(z);
+		else {
+			if (z <= 0) {
+				if (loss_ == LOGLOSS) {
+					double prediction = 1.0 / (1.0 + exp(z));
+					res.push_back(prediction);
+					res.push_back(1 - prediction);
+				} else {
+					res.push_back(1);
+					res.push_back(0);
+				}
+			} else {
+				if (loss_ == LOGLOSS) {
+					double prediction = 1.0 / (1.0 + exp(-z));
+					res.push_back(prediction);
+					res.push_back(1 - prediction);
+				} else {
+					res.push_back(0);
+					res.push_back(1);
+				}
+			}
+		}
+		return res;
+
+	}
+	const bool is_nominal() const { return nominal_; }
+private:
+	LossFunction loss_;
+	viennacl::context& context_;
+	viennacl::vector<double> weights_;
+	double factor_;
+	double prod_result_;
+	double learning_rate_;
+	double lambda_;
+	double bias_;
+	bool nominal_;
+	size_t instance_size_;
+};
+
+
+
+
 /**
  * SGD implementation using
  */
