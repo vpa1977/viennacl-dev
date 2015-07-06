@@ -64,10 +64,8 @@ namespace viennacl
 					code.append(scan_inclusive);
 
 					const char* const reduce =
-							"\n__global volatile atomic_int global_barrier = ATOMIC_VAR_INIT(0); \n"
 							"\n__kernel void reduce(ulong N, __local double* local_buffer, __global const double* in, __global double* result)"
 							"{"
-							  "int barrier_unset = 0;"
 							  // Get our global thread ID
 							  "int id = get_global_id(0);"
 							  "const int lid = get_local_id(0);"
@@ -91,11 +89,7 @@ namespace viennacl
 							  "}"
 
 							  "if(lid==0) {"
-							  //"     if (get_global_id(0) == 0) result[0] = 0;"
-							  " 	while (!atomic_compare_exchange_weak(&global_barrier, &barrier_unset, 1))"
-							  "		{ barrier_unset = 0;}"
-							  " 	result[0] += tmp;"
-							  " 	atomic_exchange(&global_barrier, 0);"
+							  " 	result[get_group_id(0)] = tmp;"
 							  "}"
 							"}\n";
 					code.append(reduce);
@@ -114,13 +108,7 @@ namespace viennacl
 							"    		int start = rows[ id ];              "
 							"			int end = rows[ id +1];     "
 							"			for (int i = start; i < end; ++i)  "
-							"			{             "
-							"				int idx = columns[i];                          				         "
-								"			double upd = elements[i] * factors[id];       "
-							"				while (!atomic_compare_exchange_weak(&locks[idx], &barrier_unset, 1)) { barrier_unset = 0; }"
-							"				output[idx] += upd;\n"
-							"           	atomic_exchange(&locks[idx], 0); "
-							"	  	   }                                                    "
+							"				elements[i] *= factors[id];       "
 							"       }             "
 							"    }"
 							"}\n";

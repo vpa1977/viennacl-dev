@@ -326,15 +326,20 @@ public:
     unsigned int scalartype_size = utils::size_of(lhs_most(statement.array(), statement.root()).lhs.numeric_type);
 
     viennacl::ocl::kernel * kernels[2];
+	
     if (has_strided_access(statements) && p_.simd_width > 1)
     {
-      kernels[0] = &programs[0].program().get_kernel(kernel_prefix+"_strided_0");
-      kernels[1] = &programs[0].program().get_kernel(kernel_prefix+"_strided_1");
+      std::string prefix = kernel_prefix + "_strided_0";
+      kernels[0] = &programs[0].program().get_kernel(prefix);
+      prefix.at(prefix.size() - 1) = '1';
+      kernels[1] = &programs[0].program().get_kernel(prefix);
     }
     else
     {
-      kernels[0] = &programs[1].program().get_kernel(kernel_prefix+"_0");
-      kernels[1] = &programs[1].program().get_kernel(kernel_prefix+"_1");
+      std::string prefix = kernel_prefix + "_0";
+      kernels[0] = &programs[1].program().get_kernel(prefix);
+	  prefix.at(prefix.size() - 1) = '1';
+      kernels[1] = &programs[1].program().get_kernel(prefix);
     }
 
     kernels[0]->local_work_size(0, p_.local_size_0);

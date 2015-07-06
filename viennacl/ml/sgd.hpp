@@ -80,14 +80,18 @@ public:
 		return std::vector<double>();
 	}
 
-	void train(const std::vector<double>& class_values, const std::vector<viennacl::vector<double> >& batch) {
+	void train(const std::vector<double>& class_values, const viennacl::vector<double> & batch) {
 
 		using namespace std::chrono;
 
-		for (size_t row = 0; row < batch.size() ; ++row)
+		for (size_t row = 0; row < class_values.size(); ++row)
 		{
+			int offset = row*weights_.size();
+			viennacl::range r(offset, offset+weights_.size());
+
+			viennacl::vector_range< viennacl::vector<double> > next(batch, r);
 			//system_clock::time_point t1 = system_clock::now();
-			prod_result_ = viennacl::linalg::inner_prod( batch.at(row),	weights_);
+			prod_result_ = viennacl::linalg::inner_prod( next ,	weights_);
 			//system_clock::time_point t2 = system_clock::now();
 			switch (context_.memory_type()) {
 			case viennacl::HSA_MEMORY:
@@ -97,7 +101,7 @@ public:
 				//system_clock::time_point t3 = system_clock::now();
 				decay_weights_cpu(class_values.size());
 			//	system_clock::time_point t4 = system_clock::now();
-				update_weights_cpu(nominal_, class_values, prod_result_, batch.at(row), row);
+				update_weights_cpu(nominal_, class_values, prod_result_, next, row);
 		//		system_clock::time_point t5 = system_clock::now();
 
 				/*duration<double> time_span1 = duration_cast<duration<double>>(t2 - t1);
@@ -422,6 +426,7 @@ public:
 		}*/
 
 		sgd_update_weights<sgd_matrix_type>(weights_, batch, factors_);
+		 
 		double sum = sgd_reduce<double>(factors_);
 		bias_ += sum;
 	}

@@ -289,8 +289,13 @@ public:
     std::cout << "ViennaCL: Getting queue for device " << devices_[current_device_id_].name() << " in context " << h_ << std::endl;
     std::cout << "ViennaCL: Current queue id " << current_queue_id_ << std::endl;
 #endif
-
-    return queues_[devices_[current_device_id_].id()][current_queue_id_];
+	static viennacl::ocl::command_queue* tmp = &queues_[devices_[current_device_id_].id()][current_queue_id_];
+	static vcl_size_t device_id = current_device_id_;
+	static vcl_size_t queue_id = current_queue_id_;
+	if (device_id == current_device_id_ && queue_id == current_queue_id_)
+		return *tmp;
+	tmp = &queues_[devices_[current_device_id_].id()][current_queue_id_];
+	return *tmp;
   }
 
   viennacl::ocl::command_queue const & get_queue() const
@@ -301,6 +306,7 @@ public:
     std::cout << "ViennaCL: Getting const queue for device " << devices_[current_device_id_].name() << " in context " << h_ << std::endl;
     std::cout << "ViennaCL: Current queue id " << current_queue_id_ << std::endl;
 #endif
+
 
     // find queue:
     QueueContainer::const_iterator it = queues_.find(devices_[current_device_id_].id());
@@ -433,13 +439,16 @@ public:
 
         cached.read((char*)&len, sizeof(vcl_size_t));
         buffer.resize(len);
-        cached.read((char*)(&buffer[0]), std::streamsize(len));
+		if (len > 0)
+		{
+			cached.read((char*)(&buffer[0]), std::streamsize(len));
 
-        cl_int status;
-        cl_device_id devid = devices_[0].id();
-        const unsigned char * bufdata = &buffer[0];
-        temp = clCreateProgramWithBinary(h_.get(),1,&devid,&len, &bufdata,&status,&err);
-        VIENNACL_ERR_CHECK(err);
+			cl_int status;
+			cl_device_id devid = devices_[0].id();
+			const unsigned char * bufdata = &buffer[0];
+			temp = clCreateProgramWithBinary(h_.get(), 1, &devid, &len, &bufdata, &status, &err);
+			VIENNACL_ERR_CHECK(err);
+		}
       }
     }
 
@@ -796,12 +805,19 @@ inline viennacl::ocl::kernel & viennacl::ocl::program::add_kernel(cl_kernel kern
 inline viennacl::ocl::kernel & viennacl::ocl::program::get_kernel(std::string const & name)
 {
   //std::cout << "Requiring kernel " << name << " from program " << name_ << std::endl;
+  std::map<std::string, kernel_container_type::iterator>::iterator cit = cache_.find(name);
+  if (cit != cache_.end())
+	  return **(cit->second);
   for (kernel_container_type::iterator it = kernels_.begin();
        it != kernels_.end();
        ++it)
   {
-    if ((*it)->name() == name)
-      return **it;
+	  if ((*it)->name() == name)
+	  {
+		  cache_.insert(std::map<std::string, kernel_container_type::iterator>::value_type(name, it));
+		  return **it;
+	  }
+      
   }
   std::cerr << "ViennaCL: FATAL ERROR: Could not find kernel '" << name << "' from program '" << name_ << "'" << std::endl;
   std::cout << "Number of kernels in program: " << kernels_.size() << std::endl;

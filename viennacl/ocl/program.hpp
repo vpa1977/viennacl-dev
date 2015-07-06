@@ -77,6 +77,7 @@ private:
   viennacl::ocl::context const * p_context_;
   std::string name_;
   kernel_container_type kernels_;
+  std::map<std::string, kernel_container_type::iterator > cache_;
 };
 
 } //namespace ocl

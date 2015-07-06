@@ -31,16 +31,21 @@ namespace opencl
 	double reduce( viennacl::vector_base<T>& to_reduce)
 	{
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(to_reduce).context());
-
-		static int  global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
+		static int num_groups = (ctx.current_device().max_compute_units() * 4 + 1);
+		static int  global_size = num_groups * ctx.current_device().max_work_group_size();
 
 		ml_helper_kernels::init(ctx);
-		viennacl::vector<T> reduce_result(1, ctx);
+		viennacl::vector<T> reduce_result(num_groups, ctx);
+		std::vector<T> reduce_result_cpu(num_groups);
 		static viennacl::ocl::kernel& reduce = ctx.get_kernel(ml_helper_kernels::program_name(), "reduce");
 		reduce.local_work_size(0,ctx.current_device().max_work_group_size());
 		reduce.global_work_size(0, global_size);
 		viennacl::ocl::enqueue(reduce(to_reduce.size(), viennacl::ocl::local_mem(reduce.local_work_size(0) * sizeof(cl_double)),   to_reduce, reduce_result));
-		return reduce_result(0);
+		viennacl::copy(reduce_result, reduce_result_cpu);
+		double ret = 0;
+		for (auto val : reduce_result_cpu)
+			ret += val;
+		return ret;
 
 	}
 
@@ -69,6 +74,14 @@ namespace opencl
 	{
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
 		ml_helper_kernels::init(ctx);
+		static bool init = false;
+		static viennacl::vector<T> one_vector(weights.size(), ctx);
+		if (!init)
+		{
+			std::vector<T> vals(weights.size());
+			std::fill(vals.begin(), vals.end(),1);
+			viennacl::copy(vals, one_vector);
+		}
 		static viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
 		static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
 		update_by_factor_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
@@ -80,11 +93,13 @@ namespace opencl
 				batch.size1(), // rows
 				batch.handle().opencl_handle(), // data
 				factors.handle().opencl_handle(), // factors vector
-				batch.handle1().opencl_handle(), // row indices vector
+				batch.handle1().opencl_handle(), // row indices vector 
 				batch.handle2().opencl_handle(), // column indices vector
 				locks.handle().opencl_handle(), // atomic locks for column access
 				weights.handle().opencl_handle() // weights vector
 				));
+
+		viennacl::linalg::prod_impl(batch, one_vector, weights); // test that it is correct
 
 	};
 
