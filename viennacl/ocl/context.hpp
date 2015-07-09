@@ -240,9 +240,10 @@ public:
     queues_[dev].push_back(viennacl::ocl::command_queue(queue_handle));
     queues_[dev].back().handle().inc();
   }
-
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
   /** @brief Adds a queue for the given device to the context */
   void add_queue(cl_device_id dev)
   {
@@ -277,7 +278,9 @@ public:
 #endif
 	*/
   }
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
   /** @brief Adds a queue for the given device to the context */
   void add_queue(viennacl::ocl::device d) { add_queue(d.id()); }
