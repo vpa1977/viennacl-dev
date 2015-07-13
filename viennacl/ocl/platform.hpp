@@ -114,6 +114,17 @@ namespace ocl
       for (cl_uint i=0; i<num_devices; ++i)
         devices.push_back(device(device_ids[i]));
 
+	  err = clGetDeviceIDs(id_, CL_DEVICE_TYPE_ALL, VIENNACL_OCL_MAX_DEVICE_NUM, device_ids, &num_devices);
+	  if (num_devices > 0)
+	  {
+		  for (cl_uint i = 0; i < num_devices; ++i)
+		  {
+			  if (std::find(devices.begin(), devices.end(), device_ids[i]) == devices.end() ) 
+				  devices.push_back(device(device_ids[i]));
+		  }
+	  }
+
+
       return devices;
     }
 

@@ -697,6 +697,7 @@ private:
       std::cout << "ViennaCL: Number of devices for context: " << devices.size() << std::endl;
 #endif
       vcl_size_t device_num = std::min<vcl_size_t>(default_device_num_, devices.size());
+	  
       for (vcl_size_t i=0; i<device_num; ++i)
         devices_.push_back(devices[i]);
 

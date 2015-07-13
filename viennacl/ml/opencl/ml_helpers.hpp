@@ -55,7 +55,7 @@ namespace opencl
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(classes).context());
 
 		ml_helper_kernels::init(ctx);
-		static viennacl::ocl::kernel& sgd_map_prod_value = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_map_prod_value");
+		viennacl::ocl::kernel& sgd_map_prod_value = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_map_prod_value");
 		static int  global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
 		sgd_map_prod_value.local_work_size(0, ctx.current_device().max_work_group_size());
 		sgd_map_prod_value.global_work_size(0, global_size);
@@ -82,12 +82,11 @@ namespace opencl
 			std::fill(vals.begin(), vals.end(),1);
 			viennacl::copy(vals, one_vector);
 		}
-		static viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
+		viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
 		static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
 		update_by_factor_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
 		update_by_factor_kernel.global_work_size(0, global_size);
 		int columns = batch.size2();
-		viennacl::vector<int> locks(columns, ctx);
 		//double* elements,double * factors, int* rows, int * columns)
 		viennacl::ocl::enqueue(update_by_factor_kernel(
 				batch.size1(), // rows
@@ -95,12 +94,8 @@ namespace opencl
 				factors.handle().opencl_handle(), // factors vector
 				batch.handle1().opencl_handle(), // row indices vector 
 				batch.handle2().opencl_handle(), // column indices vector
-				locks.handle().opencl_handle(), // atomic locks for column access
 				weights.handle().opencl_handle() // weights vector
 				));
-
-		viennacl::linalg::prod_impl(batch, one_vector, weights); // test that it is correct
-
 	};
 
 	struct knn_kernels

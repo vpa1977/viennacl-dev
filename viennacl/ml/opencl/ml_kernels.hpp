@@ -94,24 +94,37 @@ namespace viennacl
 							"}\n";
 					code.append(reduce);
 
+					const char * const atomic_add_helper =
+						"\nvoid my_atomic_add(__global double * loc, const double f)\n"
+						"\n{															  "
+						"	double old = *loc;                                        "
+						"	double sum = old + f;                                     "
+						"	volatile bool test = true;                                "
+						"	while ((test = atomic_compare_exchange_weak((atomic_double*)loc, &old, sum)) == false) "
+						"		sum = old + f; "
+						"\n}\n";
+					code.append(atomic_add_helper);
 
 					// for row = [0.. row_count] - update rows with factor results
 					const char* const sparse_matrix_by_constant = "\n"
-							"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns, __global atomic_int* locks, __global double* output)"
-							"{"
-							"    int barrier_unset = 0; "
-							"    int id = get_global_id(0);  "
-							"    for (; id < N; id+= get_global_size(0)) "
-							"    {                "
-							"		if (factors[id] != 0)                "
-							"       {										"
-							"    		int start = rows[ id ];              "
-							"			int end = rows[ id +1];     "
-							"			for (int i = start; i < end; ++i)  "
-							"				elements[i] *= factors[id];       "
-							"       }             "
-							"    }"
-							"}\n";
+						"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns,  __global double* output)"
+						"{"
+						"    int barrier_unset = 0; "
+						"    int id = get_global_id(0);  "
+						"    for (; id < N; id+= get_global_size(0)) "
+						"    {                "
+						"		if (factors[id] != 0)                "
+						"       {										"
+						"           int start = rows[ id ];              "
+						"			int end = rows[ id +1];     "
+						"			for (int i = start; i < end; ++i)  { "
+						"				double upd = elements[i] * factors[id];       "
+						"               int col = columns[id];"
+						"               my_atomic_add(&output[col], upd);"
+						"            }                                                "
+						"       }             "
+						"    }"
+					    "}\n";
 
 					code.append(sparse_matrix_by_constant);
 
