@@ -738,30 +738,32 @@ public:
            const NumericT * elements,
            vcl_size_t rows,
            vcl_size_t cols,
-           vcl_size_t nonzeros)
+		   vcl_size_t nonzeros, bool data_queue = false)
   {
     assert( (rows > 0)     && bool("Error in compressed_matrix::set(): Number of rows must be larger than zero!"));
     assert( (cols > 0)     && bool("Error in compressed_matrix::set(): Number of columns must be larger than zero!"));
     assert( (nonzeros > 0) && bool("Error in compressed_matrix::set(): Number of nonzeros must be larger than zero!"));
     //std::cout << "Setting memory: " << cols + 1 << ", " << nonzeros << std::endl;
 
-    //row_buffer_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
-    viennacl::backend::memory_create(row_buffer_, viennacl::backend::typesafe_host_array<unsigned int>(row_buffer_).element_size() * (rows + 1), viennacl::traits::context(row_buffer_), row_jumper);
+	//row_buffer_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
+	viennacl::backend::memory_create(row_buffer_, viennacl::backend::typesafe_host_array<unsigned int>(row_buffer_).element_size() * (rows + 1), viennacl::traits::context(row_buffer_), row_jumper, data_queue);
 
-    //col_buffer_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
-    viennacl::backend::memory_create(col_buffer_, viennacl::backend::typesafe_host_array<unsigned int>(col_buffer_).element_size() * nonzeros, viennacl::traits::context(col_buffer_), col_buffer);
+	//col_buffer_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
+	viennacl::backend::memory_create(col_buffer_, viennacl::backend::typesafe_host_array<unsigned int>(col_buffer_).element_size() * nonzeros, viennacl::traits::context(col_buffer_), col_buffer, data_queue);
 
-    //elements_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
-    viennacl::backend::memory_create(elements_, sizeof(NumericT) * nonzeros, viennacl::traits::context(elements_), elements);
+	//elements_.switch_active_handle_id(viennacl::backend::OPENCL_MEMORY);
+	viennacl::backend::memory_create(elements_, sizeof(NumericT) * nonzeros, viennacl::traits::context(elements_), elements, data_queue);
 
-    nonzeros_ = nonzeros;
-    rows_ = rows;
-    cols_ = cols;
+	nonzeros_ = nonzeros;
+	rows_ = rows;
+	cols_ = cols;
+
 
     //generate block information for CSR-adaptive:
-    generate_row_block_information();
+	generate_row_block_information(data_queue);
   }
 
+ 
   /** @brief Allocate memory for the supplied number of nonzeros in the matrix. Old values are preserved. */
   void reserve(vcl_size_t new_nonzeros, bool preserve = true)
   {
@@ -966,10 +968,11 @@ public:
    *
    *  Required when manually populating the memory buffers with values. Not necessary when using viennacl::copy() or .set()
    */
-  void generate_row_block_information()
+  void generate_row_block_information(bool data_queue = false)
   {
     viennacl::backend::typesafe_host_array<unsigned int> row_buffer(row_buffer_, rows_ + 1);
-    viennacl::backend::memory_read(row_buffer_, 0, row_buffer.raw_size(), row_buffer.get());
+	viennacl::backend::memory_read(row_buffer_, 0, row_buffer.raw_size(), row_buffer.get(), data_queue);
+    
 
     viennacl::backend::typesafe_host_array<unsigned int> row_blocks(row_buffer_, rows_ + 1);
 
@@ -997,10 +1000,10 @@ public:
     if (num_entries_in_current_batch > 0)
       row_blocks.set(++row_block_num_, rows_);
 
-    if (row_block_num_ > 0) //matrix might be empty...
-      viennacl::backend::memory_create(row_blocks_,
-                                       row_blocks.element_size() * (row_block_num_ + 1),
-                                       viennacl::traits::context(row_buffer_), row_blocks.get());
+	if (row_block_num_ > 0) //matrix might be empty...
+		viennacl::backend::memory_create(row_blocks_,
+		row_blocks.element_size() * (row_block_num_ + 1),
+		viennacl::traits::context(row_buffer_), row_blocks.get(), data_queue);
 
   }
 

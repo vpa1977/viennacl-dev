@@ -192,17 +192,31 @@ public:
     *  @param ptr    Optional pointer to CPU memory, with which the OpenCL memory should be initialized
     *  @return       A plain OpenCL handle. Either assign it to a viennacl::ocl::handle<cl_mem> directly, or make sure that you free to memory manually if you no longer need the allocated memory.
     */
-  cl_mem create_memory_without_smart_handle(cl_mem_flags flags, unsigned int size, void * ptr = NULL) const
+  cl_mem create_memory_without_smart_handle(cl_mem_flags flags, unsigned int size, void * ptr = NULL, bool async = false) const
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Creating memory of size " << size << " for context " << h_ << " (unsafe, returning cl_mem directly)" << std::endl;
 #endif
-    if (ptr)
-      flags |= CL_MEM_COPY_HOST_PTR;
-    cl_int err;
-    cl_mem mem = clCreateBuffer(h_.get(), flags, size, ptr, &err);
-    VIENNACL_ERR_CHECK(err);
-    return mem;
+	cl_int err;
+	if (async && ptr != NULL)
+	{
+		cl_mem memory = clCreateBuffer(h_.get(), CL_MEM_READ_WRITE, size, NULL, &err);
+
+		cl_command_queue queue = get_queue(current_device().id(), 1).handle().get();
+		err = clEnqueueWriteBuffer(queue, memory, true, 0, size, ptr, 0, NULL, NULL);
+		VIENNACL_ERR_CHECK(err);
+		return memory;
+
+	}
+	else
+	{
+		if (ptr)
+			flags |= CL_MEM_COPY_HOST_PTR;
+		
+		cl_mem mem = clCreateBuffer(h_.get(), flags, size, ptr, &err);
+		VIENNACL_ERR_CHECK(err);
+		return mem;
+	}
   }
 
 
@@ -285,6 +299,23 @@ public:
   /** @brief Adds a queue for the given device to the context */
   void add_queue(viennacl::ocl::device d) { add_queue(d.id()); }
 
+#ifdef VIENNACL_WITH_OPENCL20
+  void add_device_queue(cl_device_id dev)
+  {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
+	  std::cout << "ViennaCL: Adding new device queue for device " << dev << " to context " << h_ << std::endl;
+#endif
+	  cl_int err;
+
+	  cl_queue_properties qprop[] = {CL_QUEUE_PROPERTIES, (CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT ),
+	  CL_QUEUE_SIZE, 128*1024, 0}; // CL_QUEUE_ON_DEVICE
+	  cl_command_queue my_device_q = clCreateCommandQueueWithProperties(h_.get(), dev, qprop, &err);
+	  VIENNACL_ERR_CHECK(err);
+	  viennacl::ocl::handle<cl_command_queue> temp(my_device_q, *this);
+	  queues_[dev].push_back(viennacl::ocl::command_queue(temp));
+  }
+#endif
+
   //get queue for default device:
   viennacl::ocl::command_queue & get_queue()
   {
@@ -348,6 +379,26 @@ public:
     assert(device_index < devices_.size() && bool("Device not within context"));
 
     return queues_[devices_[device_index].id()][i];
+  }
+
+  const viennacl::ocl::command_queue & get_queue(cl_device_id dev, vcl_size_t i = 0) const
+  {
+	  if (i >= queues_.find(dev)->second.size())
+		  throw invalid_command_queue();
+
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
+	  std::cout << "ViennaCL: Getting queue " << i << " for device " << dev << " in context " << h_ << std::endl;
+#endif
+	  unsigned int device_index;
+	  for (device_index = 0; device_index < devices_.size(); ++device_index)
+	  {
+		  if (devices_[device_index] == dev)
+			  break;
+	  }
+
+	  assert(device_index < devices_.size() && bool("Device not within context"));
+
+	  return queues_.find(devices_[device_index].id())->second[i];
   }
 
   /** @brief Returns the current device */
