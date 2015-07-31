@@ -323,13 +323,7 @@ public:
     std::cout << "ViennaCL: Getting queue for device " << devices_[current_device_id_].name() << " in context " << h_ << std::endl;
     std::cout << "ViennaCL: Current queue id " << current_queue_id_ << std::endl;
 #endif
-	static viennacl::ocl::command_queue* tmp = &queues_[devices_[current_device_id_].id()][current_queue_id_];
-	static vcl_size_t device_id = current_device_id_;
-	static vcl_size_t queue_id = current_queue_id_;
-	if (device_id == current_device_id_ && queue_id == current_queue_id_)
-		return *tmp;
-	tmp = &queues_[devices_[current_device_id_].id()][current_queue_id_];
-	return *tmp;
+	return queues_[devices_[current_device_id_].id()][current_queue_id_];
   }
 
   viennacl::ocl::command_queue const & get_queue() const

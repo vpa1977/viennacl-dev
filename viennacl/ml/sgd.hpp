@@ -138,6 +138,7 @@ public:
 		} else {
 			y = class_values.at(row);
 			z = y - (prod_result + bias_);
+			y = 1;
 
 		}
 		if (loss_ != HINGE || (z < 1)) {
@@ -203,6 +204,14 @@ public:
 
 	}
 	const bool is_nominal() const { return nominal_; }
+
+	void print_weights()
+	{
+		std::cout << "weights: ";
+		for (int i = 0; i < weights_.size(); ++i)
+			std::cout << weights_(i) << " ";
+		std::cout << std::endl;
+	}
 private:
 	LossFunction loss_;
 	viennacl::context& context_;

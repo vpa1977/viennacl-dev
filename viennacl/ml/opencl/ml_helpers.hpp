@@ -75,12 +75,13 @@ namespace opencl
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
 		ml_helper_kernels::init(ctx);
 		static bool init = false;
-		static viennacl::vector<T> one_vector(weights.size(), ctx);
+		viennacl::vector<T> one_vector(weights.size(), ctx);
 		if (!init)
 		{
 			std::vector<T> vals(weights.size());
 			std::fill(vals.begin(), vals.end(),1);
 			viennacl::copy(vals, one_vector);
+			init = true;
 		}
 		viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
 		static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
