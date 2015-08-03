@@ -69,26 +69,59 @@ namespace opencl
 
 	};
 
+	template<typename T= double> 
+	void dense_sgd_update_weights(int row, bool nominal, double learning_rate, double bias, unsigned int loss_function, const viennacl::vector<double>& class_values, const viennacl::scalar<double>& prod_result, const viennacl::vector<double>& row_values, viennacl::vector<double>& weights)
+	{
+		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
+		ml_helper_kernels::init(ctx);
+		static bool init = false;
+		viennacl::ocl::kernel& dense_sgd_map_prod_values_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "dense_sgd_map_prod_value");
+		static int global_size = (ctx.current_device().max_compute_units() * 4 + 1) * ctx.current_device().max_work_group_size();
+		dense_sgd_map_prod_values_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
+		dense_sgd_map_prod_values_kernel.global_work_size(0, global_size);
+		viennacl::ocl::enqueue(dense_sgd_map_prod_values_kernel(
+			row_values.size(), // rows
+			nominal,
+			loss_function,
+			row,
+			learning_rate,
+			bias,
+			class_values.opencl_handle(),
+			prod_result,
+			weights.opencl_handle(), 
+			row_values.opencl_handle()
+			));
+
+
+		(ulong N, uint nominal, uint loss_function, uint row, double learning_rate, double bias, __global double* class_values, double prod_value, __global double* weights, __global double* instance)
+	}
+
 	template <typename sgd_matrix_type, typename T =double>
 	void sgd_update_weights(viennacl::vector_base<T>& weights, const sgd_matrix_type& batch, const viennacl::vector_base<T>& factors)
 	{
 		viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(weights).context());
 		ml_helper_kernels::init(ctx);
 		static bool init = false;
-		viennacl::vector<T> one_vector(weights.size(), ctx);
-		if (!init)
-		{
-			std::vector<T> vals(weights.size());
-			std::fill(vals.begin(), vals.end(),1);
-			viennacl::copy(vals, one_vector);
-			init = true;
-		}
 		viennacl::ocl::kernel& update_by_factor_kernel = ctx.get_kernel(ml_helper_kernels::program_name(), "sgd_update_weights");
 		static int global_size = (ctx.current_device().max_compute_units() *4 +1) * ctx.current_device().max_work_group_size();
 		update_by_factor_kernel.local_work_size(0, ctx.current_device().max_work_group_size());
-		update_by_factor_kernel.global_work_size(0, global_size);
+		int work_size = batch.size1();
+		if (ctx.current_device().max_work_group_size() > work_size)
+			work_size = ctx.current_device().max_work_group_size();
+		if (work_size > global_size)
+			work_size = global_size;
+		update_by_factor_kernel.global_work_size(0, work_size);
 		int columns = batch.size2();
-		//double* elements,double * factors, int* rows, int * columns)
+		/*
+		std::cout << "Factor " << factors(0) << std::endl;
+		
+		for (int i = 0; i < batch.size2(); ++i)
+		{
+			double d = ((sgd_matrix_type&)batch)(0, i);
+			std::cout << " " << d;
+		}
+		std::cout << std::endl;
+		*/
 		viennacl::ocl::enqueue(update_by_factor_kernel(
 				batch.size1(), // rows
 				batch.handle().opencl_handle(), // data
@@ -97,6 +130,22 @@ namespace opencl
 				batch.handle2().opencl_handle(), // column indices vector
 				weights.handle().opencl_handle() // weights vector
 				));
+
+/*		std::cout << "Weights after:";
+		for (int i = 0; i < weights.size(); ++i)
+		{
+			std::cout << " " << weights(i);
+
+		}
+		std::cout << std::endl;
+		std::cout << "matrix after mult ";
+		for (int i = 0; i < batch.size2(); ++i)
+		{
+			double d = ((sgd_matrix_type&)batch)(0, i);
+			std::cout << " " << d;
+		}
+		std::cout << std::endl;
+*/
 	};
 
 	struct knn_kernels

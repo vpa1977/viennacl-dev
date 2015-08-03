@@ -742,9 +742,27 @@ private:
       std::cout << "ViennaCL: Number of devices for context: " << devices.size() << std::endl;
 #endif
       vcl_size_t device_num = std::min<vcl_size_t>(default_device_num_, devices.size());
-	  
-      for (vcl_size_t i=0; i<device_num; ++i)
-        devices_.push_back(devices[i]);
+
+	  const char* dev_name = getenv("OPENCL_DEVICE");
+	  if (dev_name != NULL && device_num == 1)
+	  {
+		  std::string device_str(dev_name);
+		  for (const viennacl::ocl::device& dev : devices)
+		  {
+			  std::cout << "Found device " << dev.name() << std::endl;
+			  if (dev.name() == device_str)
+			  {
+				  std::cout << "Switched device to " << dev.name() << std::endl;
+				  devices_.push_back(dev); 
+				  break;
+			  }
+		  }
+	  }
+	  else
+	  {
+		  for (vcl_size_t i = 0; i < device_num; ++i)
+			  devices_.push_back(devices[i]);
+	  }
 
       if (devices.size() == 0)
       {

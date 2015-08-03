@@ -101,6 +101,7 @@ public:
 				//system_clock::time_point t3 = system_clock::now();
 				decay_weights_cpu(class_values.size());
 			//	system_clock::time_point t4 = system_clock::now();
+				//viennacl::ml::opencl::dense_sgd_update_weights<double>(row, nominal_, learning_rate_, bias_, loss_, class_values, prod_result_, next, weights_);
 				update_weights_cpu(nominal_, class_values, prod_result_, next, row);
 		//		system_clock::time_point t5 = system_clock::now();
 
@@ -255,6 +256,14 @@ public:
 	void reset() {
 		weights_.clear();
 		bias_ = 0;
+	}
+
+	void print_weights()
+	{
+		std::cout << "weights: ";
+		for (int i = 0; i < weights_.size(); ++i)
+			std::cout << weights_(i) << " ";
+		std::cout << std::endl;
 	}
 
 	std::vector<double> get_votes_for_instance(

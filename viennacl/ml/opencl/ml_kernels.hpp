@@ -106,10 +106,9 @@ namespace viennacl
 					code.append(atomic_add_helper);
 
 					// for row = [0.. row_count] - update rows with factor results
-					const char* const sparse_matrix_by_constant = "\n"
+					/*const char* const sparse_matrix_by_constant = "\n"
 						"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns,  __global double* output)"
 						"{"
-						"    int barrier_unset = 0; "
 						"    int id = get_global_id(0);  "
 						"    for (; id < N; id+= get_global_size(0)) "
 						"    {                "
@@ -118,13 +117,35 @@ namespace viennacl
 						"           int start = rows[ id ];              "
 						"			int end = rows[ id +1];     "
 						"			for (int i = start; i < end; ++i)  { "
-						"				double upd = elements[i] * factors[id];       "
-						"               int col = columns[id];"
+						"				double upd = elements[i] * factors[id]; "
+						"               int col = columns[i];  "
 						"               my_atomic_add(&output[col], upd);"
 						"            }                                                "
 						"       }             "
 						"    }"
-					    "}\n";
+					    "}\n";*/
+
+					const char* const sparse_matrix_by_constant = "\n"
+						"\n__kernel void update_row_weights( __global double* output,__global double* elements, __global int* columns, double factor, int start)"
+						"\n{"
+						"    double upd = elements[start + get_global_id(0)] * factor; int col = columns[ start + get_global_id(0)]; my_atomic_add(&output[col], upd);"
+						"}\n"
+						"__kernel  void sgd_update_weights(ulong N, __global double* elements,__global double * factors, __global int* rows, __global int * columns,  __global double* output)"
+						"{"
+						"    int id = get_global_id(0);  "
+						"    for (; id < N; id+= get_global_size(0)) "
+						"    {                "
+						"		if (factors[id] != 0)                "
+						"       {										"
+
+						"           int start = rows[ id ];              "
+						"			int end = rows[ id +1];     "
+						"           ndrange_t range = ndrange_1D(end - start); "
+						"           enqueue_kernel(get_default_queue() , "
+						"           CLK_ENQUEUE_FLAGS_WAIT_KERNEL, range,^{update_row_weights(output,elements, columns, factors[id],start); });  "
+						"       }             "
+						"    }"
+						"}\n";
 
 					code.append(sparse_matrix_by_constant);
 
@@ -167,6 +188,51 @@ namespace viennacl
 							"	}"
 							"}\n";
 					code.append(map_prod_value_nominal);
+
+
+					const char* const dense_sgd_update_weights =
+						"\n__kernel void dense_sgd_map_prod_value(ulong N, uint nominal,uint loss_function, uint row, double learning_rate, double bias, __global double* class_values, double prod_value, __global double* weights, __global double* instance)\n"
+						"{\n"
+						"	int id = get_global_id(0);\n"
+						"   double y, z, factor;                 "
+						"	if (id == 0)\n "
+						"   {														 "
+						"       if (nominal)\n"
+						"		{	"
+						"			y = select(-1,1, (int)class_values[row]); "
+						"			z = y*(prod_value  + bias);"
+						"		}"
+						"		else\n"
+						"		{"
+						"			y = class_values[row]; "
+						"			z =  y - (prod_value + bias); y = 1;\n"
+						"		}\n"
+						"		double loss = 0;   "
+						"       switch(loss_function)    "
+						"       {"
+						"          case 0: loss = isless(z, 1);"
+						"				break; "
+						"          case 1:"
+						"		   {"
+						"	        double t = exp(-z); "
+						"			loss = fmin(1.0 / (exp(z) + 1.0),t / (t+1)); "
+						"		   }"
+						"          break;"
+						"          case 2:"
+						"          {"
+						"            loss = z;"
+						"          }"
+						"          break;"
+						"		}"
+						"       factor = learning_rate * y * loss;"
+						"	}"
+						"	for (; id < N; id+= get_global_size(0))\n "
+						"   {"
+						"      weights[id] += factor*instance[id];    "
+						"   }"
+						"}\n";
+					code.append(dense_sgd_update_weights);
+
 					const char* const knn_calc_distance =
 							"\n__kernel void knn_calc_distance(int start_row, int end_row, ulong instance_length, __global double* samples,"
 							"uint samples_start1, uint samples_start2, uint samples_internal_size1, uint samples_internal_size2, uint samples_size1, "
@@ -213,3 +279,4 @@ namespace viennacl
 
 
 #endif /* VIENNACL_ML_HSA_ML_KERNELS_HPP_ */
+
