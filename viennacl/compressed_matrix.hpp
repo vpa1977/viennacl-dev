@@ -2,7 +2,7 @@
 #define VIENNACL_COMPRESSED_MATRIX_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -687,6 +687,30 @@ public:
   }
 #endif
 
+  /** @brief Assignment a compressed matrix from the product of two compressed_matrix objects (C = A * B). */
+  compressed_matrix(matrix_expression<const compressed_matrix, const compressed_matrix, op_prod> const & proxy)
+    : rows_(0), cols_(0), nonzeros_(0), row_block_num_(0)
+  {
+    viennacl::context ctx = viennacl::traits::context(proxy.lhs());
+
+    row_buffer_.switch_active_handle_id(ctx.memory_type());
+    col_buffer_.switch_active_handle_id(ctx.memory_type());
+    elements_.switch_active_handle_id(ctx.memory_type());
+    row_blocks_.switch_active_handle_id(ctx.memory_type());
+
+#ifdef VIENNACL_WITH_OPENCL
+    if (ctx.memory_type() == OPENCL_MEMORY)
+    {
+      row_buffer_.opencl_handle().context(ctx.opencl_context());
+      col_buffer_.opencl_handle().context(ctx.opencl_context());
+      elements_.opencl_handle().context(ctx.opencl_context());
+      row_blocks_.opencl_handle().context(ctx.opencl_context());
+    }
+#endif
+
+    viennacl::linalg::prod_impl(proxy.lhs(), proxy.rhs(), *this);
+    generate_row_block_information();
+  }
 
   /** @brief Assignment a compressed matrix from possibly another memory domain. */
   compressed_matrix & operator=(compressed_matrix const & other)
@@ -963,7 +987,6 @@ private:
   }
 
 public:
-
   /** @brief Builds the row block information needed for fast sparse matrix-vector multiplications.
    *
    *  Required when manually populating the memory buffers with values. Not necessary when using viennacl::copy() or .set()
@@ -1007,6 +1030,7 @@ public:
 
   }
 
+private:
   // /** @brief Copy constructor is by now not available. */
   //compressed_matrix(compressed_matrix const &);
 
@@ -1025,7 +1049,7 @@ private:
 /** @brief Output stream support for compressed_matrix. Output format is same as MATLAB, Octave, or SciPy
   *
   * @param os   STL output stream
-  * @param val  The vector that should be printed
+  * @param A    The compressed matrix to be printed.
 */
 template<typename NumericT, unsigned int AlignmentV>
 std::ostream & operator<<(std::ostream & os, compressed_matrix<NumericT, AlignmentV> const & A)

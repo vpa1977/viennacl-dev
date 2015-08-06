@@ -3,7 +3,7 @@
 
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -14,7 +14,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -30,6 +30,9 @@
 
 // includes, project
 #include "viennacl/linalg/opencl/kernels/bisect.hpp"
+#include "viennacl/linalg/detail/bisect/structs.hpp"
+#include "viennacl/linalg/detail/bisect/config.hpp"
+#include "viennacl/linalg/detail/bisect/util.hpp"
 
 namespace viennacl
 {
@@ -37,7 +40,7 @@ namespace linalg
 {
 namespace opencl
 {
-const std::string BISECT_KERNEL_SMALL = "bisectKernel";
+const std::string BISECT_KERNEL_SMALL = "bisectKernelSmall";
 const std::string BISECT_KERNEL_LARGE = "bisectKernelLarge";
 const std::string BISECT_KERNEL_LARGE_ONE_INTERVALS  = "bisectKernelLarge_OneIntervals";
 const std::string BISECT_KERNEL_LARGE_MULT_INTERVALS = "bisectKernelLarge_MultIntervals";
@@ -83,8 +86,8 @@ void bisectLarge(const viennacl::linalg::detail::InputData<NumericT> &input,
       viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::init(ctx);
 
       viennacl::ocl::kernel& kernel = ctx.get_kernel(viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::program_name(), BISECT_KERNEL_LARGE);
-      kernel.global_work_size(0, 1 * VIENNACL_BISECT_MAX_THREADS_BLOCK);
-      kernel.local_work_size(0, VIENNACL_BISECT_MAX_THREADS_BLOCK);
+      kernel.global_work_size(0, mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2);     // Use only 128 threads for 256 < n <= 512, this
+      kernel.local_work_size(0,  mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2);     // is reasoned
 
       viennacl::ocl::enqueue(kernel(viennacl::traits::opencl_handle(input.g_a),
                                     viennacl::traits::opencl_handle(input.g_b),
@@ -116,14 +119,15 @@ void bisectLargeOneIntervals(const viennacl::linalg::detail::InputData<NumericT>
                              const NumericT precision)
     {
       unsigned int num_one_intervals = result.g_num_one;
-      unsigned int num_blocks = viennacl::linalg::detail::getNumBlocksLinear(num_one_intervals, VIENNACL_BISECT_MAX_THREADS_BLOCK);
+      unsigned int num_blocks = viennacl::linalg::detail::getNumBlocksLinear(num_one_intervals,
+                                                                             mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK: VIENNACL_BISECT_MAX_THREADS_BLOCK / 2);
 
       viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(input.g_a).context());
       viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::init(ctx);
 
       viennacl::ocl::kernel& kernel = ctx.get_kernel(viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::program_name(), BISECT_KERNEL_LARGE_ONE_INTERVALS);
-      kernel.global_work_size(0, num_blocks * VIENNACL_BISECT_MAX_THREADS_BLOCK);
-      kernel.local_work_size(0, VIENNACL_BISECT_MAX_THREADS_BLOCK);
+      kernel.global_work_size(0, num_blocks * (mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2));
+      kernel.local_work_size(0, mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2);
 
       viennacl::ocl::enqueue(kernel(viennacl::traits::opencl_handle(input.g_a),
                                     viennacl::traits::opencl_handle(input.g_b),
@@ -149,8 +153,8 @@ void bisectLargeMultIntervals(const viennacl::linalg::detail::InputData<NumericT
       viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::init(ctx);
 
       viennacl::ocl::kernel& kernel = ctx.get_kernel(viennacl::linalg::opencl::kernels::bisect_kernel<NumericT>::program_name(), BISECT_KERNEL_LARGE_MULT_INTERVALS);
-      kernel.global_work_size(0, num_blocks_mult * VIENNACL_BISECT_MAX_THREADS_BLOCK);
-      kernel.local_work_size(0, VIENNACL_BISECT_MAX_THREADS_BLOCK);
+      kernel.global_work_size(0, num_blocks_mult * (mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2));
+      kernel.local_work_size(0,                     mat_size > 512 ? VIENNACL_BISECT_MAX_THREADS_BLOCK : VIENNACL_BISECT_MAX_THREADS_BLOCK / 2);
 
       viennacl::ocl::enqueue(kernel(viennacl::traits::opencl_handle(input.g_a),
                                     viennacl::traits::opencl_handle(input.g_b),

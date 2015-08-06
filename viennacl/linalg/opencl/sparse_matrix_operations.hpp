@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_OPENCL_SPARSE_MATRIX_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -84,13 +84,20 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & A,
 {
   viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(A).context());
   viennacl::linalg::opencl::kernels::compressed_matrix<NumericT>::init(ctx);
+  bool use_nvidia_specific = AlignmentV == 1 && ctx.current_device().vendor_id() == viennacl::ocl::nvidia_id && (double(A.nnz()) / double(A.size1()) > 12.0);
+
   std::stringstream ss;
   ss << "vec_mul";
   unsigned int alignment = AlignmentV; //prevent unreachable code warnings below
-  if (alignment == 4)
-    ss << "4";
-  if (alignment == 8)
-    ss << "8";
+  if (use_nvidia_specific)
+    ss << "_nvidia";
+  else
+  {
+    if (alignment == 4)
+      ss << "4";
+    if (alignment == 8)
+      ss << "8";
+  }
 
   viennacl::ocl::kernel & k = ctx.get_kernel(viennacl::linalg::opencl::kernels::compressed_matrix<NumericT>::program_name(), ss.str());
 
@@ -117,14 +124,25 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & A,
   {
     if (ctx.current_device().max_work_group_size() >= 256)
       k.local_work_size(0, 256);
-    k.global_work_size(0, A.blocks1() * k.local_work_size(0));
-    if (k.global_work_size(0) > 0 )
-		viennacl::ocl::enqueue(k(A.handle1().opencl_handle(), A.handle2().opencl_handle(), A.handle3().opencl_handle(), A.handle().opencl_handle(), cl_uint(A.blocks1()),
-								 x, layout_x,
-								 y, layout_y
-								));
-    else
-    	y.clear(); // 0 matrix by vector results in 0 vector
+
+    if (use_nvidia_specific)
+    {
+      k.global_work_size(0, 512 * k.local_work_size(0));
+
+      viennacl::ocl::enqueue(k(A.handle1().opencl_handle(), A.handle2().opencl_handle(), A.handle3().opencl_handle(), A.handle().opencl_handle(), cl_uint(A.blocks1()),
+                               x, layout_x,
+                               y, layout_y
+                              ));
+    }
+    else // use CSR adaptive:
+    {
+      k.global_work_size(0, A.blocks1() * k.local_work_size(0));
+
+      viennacl::ocl::enqueue(k(A.handle1().opencl_handle(), A.handle2().opencl_handle(), A.handle3().opencl_handle(), A.handle().opencl_handle(), cl_uint(A.blocks1()),
+                               x, layout_x,
+                               y, layout_y
+                              ));
+    }
   }
 }
 
@@ -975,8 +993,11 @@ void prod_impl(viennacl::sliced_ell_matrix<ScalarT, IndexT> const & A,
   ss << "vec_mul_" << 1;//(AlignmentV != 1?4:1);
   viennacl::ocl::kernel& k = ctx.get_kernel(viennacl::linalg::opencl::kernels::sliced_ell_matrix<ScalarT, IndexT>::program_name(), "vec_mul");
 
-  vcl_size_t thread_num = A.rows_per_block();
+  vcl_size_t thread_num = std::max(A.rows_per_block(), static_cast<vcl_size_t>(128));
   unsigned int group_num = 256;
+
+  if (ctx.current_device().vendor_id() == viennacl::ocl::nvidia_id)
+    thread_num = 256;
 
   k.local_work_size(0, thread_num);
   k.global_work_size(0, thread_num * group_num);
@@ -988,7 +1009,8 @@ void prod_impl(viennacl::sliced_ell_matrix<ScalarT, IndexT> const & A,
                            viennacl::traits::opencl_handle(x),
                            layout_x,
                            viennacl::traits::opencl_handle(y),
-                           layout_y)
+                           layout_y,
+                           cl_uint(A.rows_per_block()))
   );
 }
 

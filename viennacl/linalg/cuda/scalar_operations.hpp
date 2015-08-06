@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_SCALAR_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -85,10 +85,10 @@ as(ScalarT1 & s1,
   if (viennacl::is_cpu_scalar<NumericT>::value)
     temporary_alpha = alpha;
 
-  as_kernel<<<1, 1>>>(detail::cuda_arg<value_type>(s1),
-                      detail::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
+  as_kernel<<<1, 1>>>(viennacl::cuda_arg(s1),
+                      viennacl::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
                       options_alpha,
-                      detail::cuda_arg<value_type>(s2));
+                      viennacl::cuda_arg(s2));
   VIENNACL_CUDA_LAST_ERROR_CHECK("as_kernel");
 }
 
@@ -205,13 +205,13 @@ asbs(ScalarT1 & s1,
   if (viennacl::is_cpu_scalar<NumericT2>::value)
     temporary_beta = beta;
 
-  asbs_kernel<<<1, 1>>>(detail::cuda_arg<value_type>(s1),
-                        detail::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
+  asbs_kernel<<<1, 1>>>(viennacl::cuda_arg(s1),
+                        viennacl::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
                         options_alpha,
-                        detail::cuda_arg<value_type>(s2),
-                        detail::cuda_arg<value_type>(detail::arg_reference(beta, temporary_beta)),
+                        viennacl::cuda_arg(s2),
+                        viennacl::cuda_arg<value_type>(detail::arg_reference(beta, temporary_beta)),
                         options_beta,
-                        detail::cuda_arg<value_type>(s3) );
+                        viennacl::cuda_arg(s3) );
   VIENNACL_CUDA_LAST_ERROR_CHECK("asbs_kernel");
 }
 
@@ -329,13 +329,13 @@ asbs_s(ScalarT1 & s1,
     temporary_beta = beta;
 
   std::cout << "Launching asbs_s_kernel..." << std::endl;
-  asbs_s_kernel<<<1, 1>>>(detail::cuda_arg<value_type>(s1),
-                          detail::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
+  asbs_s_kernel<<<1, 1>>>(viennacl::cuda_arg(s1),
+                          viennacl::cuda_arg<value_type>(detail::arg_reference(alpha, temporary_alpha)),
                           options_alpha,
-                          detail::cuda_arg<value_type>(s2),
-                          detail::cuda_arg<value_type>(detail::arg_reference(beta, temporary_beta)),
+                          viennacl::cuda_arg(s2),
+                          viennacl::cuda_arg<value_type>(detail::arg_reference(beta, temporary_beta)),
                           options_beta,
-                          detail::cuda_arg<value_type>(s3) );
+                          viennacl::cuda_arg(s3) );
   VIENNACL_CUDA_LAST_ERROR_CHECK("asbs_s_kernel");
 }
 
@@ -362,7 +362,7 @@ swap(ScalarT1 & s1, ScalarT2 & s2)
 {
   typedef typename viennacl::result_of::cpu_value_type<ScalarT1>::type        value_type;
 
-  scalar_swap_kernel<<<1, 1>>>(detail::cuda_arg<value_type>(s1),detail::cuda_arg<value_type>(s2));
+  scalar_swap_kernel<<<1, 1>>>(viennacl::cuda_arg(s1), viennacl::cuda_arg(s2));
 }
 
 

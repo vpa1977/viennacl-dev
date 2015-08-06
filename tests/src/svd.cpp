@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -32,7 +32,7 @@
 
 #include "viennacl/linalg/svd.hpp"
 
-#include "examples/benchmarks/benchmark-utils.hpp"
+#include "viennacl/tools/timer.hpp"
 
 
 inline void read_matrix_size(std::fstream& f, std::size_t & sz1, std::size_t & sz2)
@@ -190,7 +190,7 @@ void test_svd(const std::string & fn, ScalarType EPS)
 
   Aref = Ai;
 
-  Timer timer;
+  viennacl::tools::timer timer;
   timer.start();
 
   viennacl::linalg::svd(Ai, QL, QR);
@@ -226,7 +226,7 @@ void time_svd(std::size_t sz1, std::size_t sz2)
   viennacl::fast_copy(&in[0], &in[0] + in.size(), Ai);
 
 
-  Timer timer;
+  viennacl::tools::timer timer;
   timer.start();
 
   viennacl::linalg::svd(Ai, QL, QR);

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -90,6 +90,16 @@ int main()
   std::cout << "Starting computation of eigenvalue with largest modulus (might take about a minute)..." << std::endl;
   std::cout << "Result of power iteration with ublas matrix (single-threaded): " << viennacl::linalg::eig(ublas_A, ptag) << std::endl;
   std::cout << "Result of power iteration with ViennaCL (OpenCL accelerated): " << viennacl::linalg::eig(vcl_A, ptag) << std::endl;
+
+  /**
+   *  You can also obtain the associated *approximated* eigenvector by passing it as a third argument to eig()
+   *  Tighten the tolerance passed to ptag above in order to obtain more accurate results.
+   **/
+  viennacl::vector<ScalarType> eigenvector(vcl_A.size1());
+  viennacl::linalg::eig(vcl_A, ptag, eigenvector);
+  std::cout << "First three entries in eigenvector: " << eigenvector[0] << " " << eigenvector[1] << " " << eigenvector[2] << std::endl;
+  viennacl::vector<ScalarType> Ax = viennacl::linalg::prod(vcl_A, eigenvector);
+  std::cout << "First three entries in A*eigenvector: " << Ax[0] << " " << Ax[1] << " " << Ax[2] << std::endl;
 
   return EXIT_SUCCESS;
 }

@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_MISC_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -73,11 +73,11 @@ void level_scheduling_substitute(vector<NumericT> & vec,
                              vcl_size_t num_rows
                             )
 {
-  level_scheduling_substitute_kernel<<<128, 128>>>(detail::cuda_arg<unsigned int>(row_index_array.cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(row_buffer.cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(col_buffer.cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(element_buffer.cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(vec),
+  level_scheduling_substitute_kernel<<<128, 128>>>(viennacl::cuda_arg<unsigned int>(row_index_array),
+                                                   viennacl::cuda_arg<unsigned int>(row_buffer),
+                                                   viennacl::cuda_arg<unsigned int>(col_buffer),
+                                                   viennacl::cuda_arg<NumericT>(element_buffer),
+                                                   viennacl::cuda_arg(vec),
                                                    static_cast<unsigned int>(num_rows)
                                                   );
 }

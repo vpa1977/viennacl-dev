@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_DETAIL_ILU0_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -126,7 +126,7 @@ void precondition(viennacl::compressed_matrix<NumericT> & A, ilu0_tag const & /*
         {
           if (col_buffer[buf_index_akj] == j)
           {
-            a_kk = elements[buf_index_akj];
+            a_kj = elements[buf_index_akj];
             break;
           }
         }
@@ -177,7 +177,7 @@ private:
     viennacl::linalg::precondition(LU_, tag_);
   }
 
-  ilu0_tag const &                           tag_;
+  ilu0_tag                                   tag_;
   viennacl::compressed_matrix<NumericType>   LU_;
 };
 
@@ -351,7 +351,7 @@ private:
 
   }
 
-  ilu0_tag const & tag_;
+  ilu0_tag tag_;
   viennacl::compressed_matrix<NumericT> LU_;
 
   std::list<viennacl::backend::mem_handle> multifrontal_L_row_index_arrays_;

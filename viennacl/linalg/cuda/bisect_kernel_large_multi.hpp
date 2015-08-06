@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_BISECT_KERNEL_LARGE_MULTI_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -164,7 +164,7 @@ bisectKernelLarge_MultIntervals(const NumericT *g_d, const NumericT *g_s, const 
         s_compaction_list[2 * VIENNACL_BISECT_MAX_THREADS_BLOCK] = 0;
 
         // subdivide interval if currently active and not already converged
-        subdivideActiveInterval(tid, s_left, s_right,
+        subdivideActiveIntervalMulti(tid, s_left, s_right,
                                 s_left_count, s_right_count,
                                 num_threads_active,
                                 left, right, left_count, right_count,

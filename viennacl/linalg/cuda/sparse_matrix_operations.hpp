@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_SPARSE_MATRIX_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -107,10 +107,10 @@ namespace detail
                 vector_base<NumericT> & vec,
                 viennacl::linalg::detail::row_info_types info_selector)
   {
-    csr_row_info_extractor_kernel<<<128, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                                detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(vec),
+    csr_row_info_extractor_kernel<<<128, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                viennacl::cuda_arg<NumericT>(mat.handle()),
+                                                viennacl::cuda_arg(vec),
                                                 static_cast<unsigned int>(mat.size1()),
                                                 static_cast<unsigned int>(info_selector)
                                                );
@@ -151,9 +151,11 @@ __global__ void compressed_matrix_vec_mul_kernel(
       dot_prod += elements[i] * x[column_indices[i] * inc_x + start_x];
 
     shared_elements[threadIdx.x] = dot_prod;
-    #pragma unroll
-    for (unsigned int k = 1; k < SubWarpSizeV; k *= 2)
-      shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^ k];
+    if (1  < SubWarpSizeV) shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^  1];
+    if (2  < SubWarpSizeV) shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^  2];
+    if (4  < SubWarpSizeV) shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^  4];
+    if (8  < SubWarpSizeV) shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^  8];
+    if (16 < SubWarpSizeV) shared_elements[threadIdx.x] += shared_elements[threadIdx.x ^ 16];
 
     if (id_in_row == 0)
       result[row * inc_result + start_result] = shared_elements[threadIdx.x];
@@ -245,22 +247,55 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & mat,
                const viennacl::vector_base<NumericT> & vec,
                      viennacl::vector_base<NumericT> & result)
 {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 500
-  if (double(mat.nnz()) / double(mat.size1()) > 6.4) // less than 10% of threads expected to idle
+  static bool first = true;
+  static bool is_maxwell = false;
+
+  // check whether the CUDA device is from the Maxwell family.
+  // Only run once, because the query to the backend takes about the same time as a kernel launch (~15us), thus being too expensive to query each time.
+  //
+  // Note: This might result in non-optimal kernels being selected if multiple Maxwell- and non-Maxwell GPUs are available in the system and devices are switched at runtime.
+  //       However, this situation is certainly rare, hence the the benefits of this singleton outweigh the disadvantages encountered in such a corner case.
+  if (first)
+  {
+    cudaDeviceProp prop;
+    int device_index = 0;
+
+    cudaError_t err_flag = cudaGetDevice(&device_index);
+    if (err_flag == cudaSuccess)
+    {
+      err_flag = cudaGetDeviceProperties(&prop, device_index);
+      if (err_flag == cudaSuccess && prop.major >= 5)
+        is_maxwell = true;
+    }
+    first = false;
+  }
+
+  if (is_maxwell && double(mat.nnz()) / double(mat.size1()) > 6.4) // less than 10% of threads expected to idle
   {
     compressed_matrix_vec_mul_kernel<8,  NumericT><<<512, 256>>>(   // experience on a GTX 750 Ti suggests that 8 is a substantially better choice here
-#else
-  if (double(mat.nnz()) / double(mat.size1()) > 12.0) // less than 25% of threads expected to idle
+                                                                    viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                                    viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                                    viennacl::cuda_arg<NumericT>(mat.handle()),
+                                                                    viennacl::cuda_arg(vec),
+                                                                    static_cast<unsigned int>(vec.start()),
+                                                                    static_cast<unsigned int>(vec.stride()),
+                                                                    viennacl::cuda_arg(result),
+                                                                    static_cast<unsigned int>(result.start()),
+                                                                    static_cast<unsigned int>(result.stride()),
+                                                                    static_cast<unsigned int>(result.size())
+                                                                   );
+       VIENNACL_CUDA_LAST_ERROR_CHECK("compressed_matrix_vec_mul_kernel");
+  }
+  else if (!is_maxwell && double(mat.nnz()) / double(mat.size1()) > 12.0) // less than 25% of threads expected to idle
   {
     compressed_matrix_vec_mul_kernel<16, NumericT><<<512, 256>>>(   // Fermi and Kepler prefer 16 threads per row (half-warp)
-#endif
-                                                                 detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                                                 detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                                                 detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                                                 detail::cuda_arg<NumericT>(vec),
+                                                                 viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                                 viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                                 viennacl::cuda_arg<NumericT>(mat.handle()),
+                                                                 viennacl::cuda_arg(vec),
                                                                  static_cast<unsigned int>(vec.start()),
                                                                  static_cast<unsigned int>(vec.stride()),
-                                                                 detail::cuda_arg<NumericT>(result),
+                                                                 viennacl::cuda_arg(result),
                                                                  static_cast<unsigned int>(result.start()),
                                                                  static_cast<unsigned int>(result.stride()),
                                                                  static_cast<unsigned int>(result.size())
@@ -269,15 +304,15 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & mat,
   }
   else
   {
-    compressed_matrix_vec_mul_adaptive_kernel<<<512, 256>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                                            detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                                            detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                                            detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
+    compressed_matrix_vec_mul_adaptive_kernel<<<512, 256>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                            viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                            viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                                            viennacl::cuda_arg<NumericT>(mat.handle()),
                                                             static_cast<unsigned int>(mat.blocks1()),
-                                                            detail::cuda_arg<NumericT>(vec),
+                                                            viennacl::cuda_arg(vec),
                                                             static_cast<unsigned int>(vec.start()),
                                                             static_cast<unsigned int>(vec.stride()),
-                                                            detail::cuda_arg<NumericT>(result),
+                                                            viennacl::cuda_arg(result),
                                                             static_cast<unsigned int>(result.start()),
                                                             static_cast<unsigned int>(result.stride()),
                                                             static_cast<unsigned int>(result.size())
@@ -387,17 +422,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.row_major() && result.row_major())
   {
     compressed_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -408,17 +443,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.row_major() && !result.row_major())
   {
     compressed_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -429,17 +464,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.row_major() && result.row_major())
   {
     compressed_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -450,17 +485,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     compressed_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -545,17 +580,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.lhs().row_major() && result.row_major())
   {
     compressed_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                                (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                 detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                 detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                 viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                 viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                 detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                 viennacl::cuda_arg(d_mat.lhs()),
                                                  static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                 detail::cuda_arg<NumericT>(result),
+                                                 viennacl::cuda_arg(result),
                                                  static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -566,17 +601,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.lhs().row_major() && !result.row_major())
   {
     compressed_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                                (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                 detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                 detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                 viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                 viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                 detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                 viennacl::cuda_arg(d_mat.lhs()),
                                                  static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                 detail::cuda_arg<NumericT>(result),
+                                                 viennacl::cuda_arg(result),
                                                  static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -587,17 +622,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.lhs().row_major() && result.row_major())
   {
     compressed_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                                (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                 detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                 detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                 viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                 viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                 detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                 viennacl::cuda_arg(d_mat.lhs()),
                                                  static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                 detail::cuda_arg<NumericT>(result),
+                                                 viennacl::cuda_arg(result),
                                                  static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -608,17 +643,17 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     compressed_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                                (detail::cuda_arg<unsigned int>(sp_mat.handle1().cuda_handle()),
-                                                 detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                                 detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                                (viennacl::cuda_arg<unsigned int>(sp_mat.handle1()),
+                                                 viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                                 viennacl::cuda_arg<NumericT>(sp_mat.handle()),
 
-                                                 detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                 viennacl::cuda_arg(d_mat.lhs()),
                                                  static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                  static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                 detail::cuda_arg<NumericT>(result),
+                                                 viennacl::cuda_arg(result),
                                                  static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                  static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -672,10 +707,10 @@ inplace_solve(const SparseMatrixT & mat,
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::unit_lower_tag)
 {
-  csr_unit_lu_forward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                         detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                         detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                         detail::cuda_arg<NumericT>(vec),
+  csr_unit_lu_forward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                         viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                         viennacl::cuda_arg<NumericT>(mat.handle()),
+                                         viennacl::cuda_arg(vec),
                                          static_cast<unsigned int>(mat.size1())
                                         );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_unit_lu_forward_kernel");
@@ -693,10 +728,10 @@ inplace_solve(const SparseMatrixT & mat,
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::lower_tag)
 {
-  csr_lu_forward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                    detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(vec),
+  csr_lu_forward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                    viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                    viennacl::cuda_arg<NumericT>(mat.handle()),
+                                    viennacl::cuda_arg(vec),
                                     static_cast<unsigned int>(mat.size1())
                                    );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_lu_forward_kernel");
@@ -715,10 +750,10 @@ inplace_solve(const SparseMatrixT & mat,
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::unit_upper_tag)
 {
-  csr_unit_lu_backward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                    detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(vec),
+  csr_unit_lu_backward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                    viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                    viennacl::cuda_arg<NumericT>(mat.handle()),
+                                    viennacl::cuda_arg(vec),
                                     static_cast<unsigned int>(mat.size1())
                                    );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_unit_lu_backward_kernel");
@@ -736,10 +771,10 @@ inplace_solve(const SparseMatrixT & mat,
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::upper_tag)
 {
-  csr_lu_backward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                    detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                    detail::cuda_arg<NumericT>(vec),
+  csr_lu_backward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                    viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                    viennacl::cuda_arg<NumericT>(mat.handle()),
+                                    viennacl::cuda_arg(vec),
                                     static_cast<unsigned int>(mat.size1())
                                    );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_lu_backward_kernel");
@@ -760,10 +795,10 @@ inplace_solve(const matrix_expression<const SparseMatrixT, const SparseMatrixT, 
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::unit_lower_tag)
 {
-  csr_trans_unit_lu_forward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                          detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(vec),
+  csr_trans_unit_lu_forward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                          viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                          viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                          viennacl::cuda_arg(vec),
                                           static_cast<unsigned int>(mat.lhs().size1())
                                          );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_trans_unit_lu_forward_kernel");
@@ -783,18 +818,18 @@ inplace_solve(const matrix_expression<const SparseMatrixT, const SparseMatrixT, 
 {
   viennacl::vector<NumericT> diagonal(vec.size());
 
-  compressed_matrix_diagonal_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                                detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(diagonal),
+  compressed_matrix_diagonal_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                                viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                                viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                                viennacl::cuda_arg(diagonal),
                                                 static_cast<unsigned int>(mat.size1())
                                                );
 
-  csr_trans_lu_forward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                          detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(diagonal),
-                                          detail::cuda_arg<NumericT>(vec),
+  csr_trans_lu_forward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                          viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                          viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                          viennacl::cuda_arg(diagonal),
+                                          viennacl::cuda_arg(vec),
                                           static_cast<unsigned int>(mat.lhs().size1())
                                          );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_trans_lu_forward_kernel");
@@ -812,10 +847,10 @@ inplace_solve(const matrix_expression<const SparseMatrixT, const SparseMatrixT, 
               viennacl::vector_base<NumericT> & vec,
               viennacl::linalg::unit_upper_tag)
 {
-  csr_trans_unit_lu_backward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                                detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(vec),
+  csr_trans_unit_lu_backward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                                viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                                viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                                viennacl::cuda_arg(vec),
                                                 static_cast<unsigned int>(mat.lhs().size1())
                                               );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_trans_unit_lu_backward_kernel");
@@ -835,18 +870,18 @@ inplace_solve(const matrix_expression<const SparseMatrixT, const SparseMatrixT, 
 {
   viennacl::vector<NumericT> diagonal(vec.size());
 
-  compressed_matrix_diagonal_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                                detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(diagonal),
+  compressed_matrix_diagonal_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                                viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                                viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                                viennacl::cuda_arg(diagonal),
                                                 static_cast<unsigned int>(mat.size1())
                                                );
 
-  csr_trans_lu_backward_kernel<<<1, 128>>>(detail::cuda_arg<unsigned int>(mat.lhs().handle1().cuda_handle()),
-                                           detail::cuda_arg<unsigned int>(mat.lhs().handle2().cuda_handle()),
-                                           detail::cuda_arg<NumericT>(mat.lhs().handle().cuda_handle()),
-                                           detail::cuda_arg<NumericT>(diagonal),
-                                           detail::cuda_arg<NumericT>(vec),
+  csr_trans_lu_backward_kernel<<<1, 128>>>(viennacl::cuda_arg<unsigned int>(mat.lhs().handle1()),
+                                           viennacl::cuda_arg<unsigned int>(mat.lhs().handle2()),
+                                           viennacl::cuda_arg<NumericT>(mat.lhs().handle()),
+                                           viennacl::cuda_arg(diagonal),
+                                           viennacl::cuda_arg(vec),
                                            static_cast<unsigned int>(mat.lhs().size1())
                                           );
   VIENNACL_CUDA_LAST_ERROR_CHECK("csr_trans_lu_backward_kernel");
@@ -866,11 +901,11 @@ namespace detail
                            vector_base<NumericT> & vec,
                            viennacl::linalg::unit_lower_tag)
   {
-    csr_block_trans_unit_lu_forward<<<num_blocks, 128>>>(detail::cuda_arg<unsigned int>(L.lhs().handle1().cuda_handle()),
-                                                         detail::cuda_arg<unsigned int>(L.lhs().handle2().cuda_handle()),
-                                                         detail::cuda_arg<NumericT>(L.lhs().handle().cuda_handle()),
-                                                         detail::cuda_arg<unsigned int>(block_indices.cuda_handle()),
-                                                         detail::cuda_arg<NumericT>(vec),
+    csr_block_trans_unit_lu_forward<<<num_blocks, 128>>>(viennacl::cuda_arg<unsigned int>(L.lhs().handle1()),
+                                                         viennacl::cuda_arg<unsigned int>(L.lhs().handle2()),
+                                                         viennacl::cuda_arg<NumericT>(L.lhs().handle()),
+                                                         viennacl::cuda_arg<unsigned int>(block_indices),
+                                                         viennacl::cuda_arg(vec),
                                                          static_cast<unsigned int>(L.lhs().size1())
                                                         );
   }
@@ -885,12 +920,12 @@ namespace detail
                            vector_base<NumericT> & vec,
                            viennacl::linalg::upper_tag)
   {
-    csr_block_trans_lu_backward<<<num_blocks, 128>>>(detail::cuda_arg<unsigned int>(U.lhs().handle1().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(U.lhs().handle2().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(U.lhs().handle().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(U_diagonal.handle().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(block_indices.cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(vec),
+    csr_block_trans_lu_backward<<<num_blocks, 128>>>(viennacl::cuda_arg<unsigned int>(U.lhs().handle1()),
+                                                     viennacl::cuda_arg<unsigned int>(U.lhs().handle2()),
+                                                     viennacl::cuda_arg<NumericT>(U.lhs().handle()),
+                                                     viennacl::cuda_arg(U_diagonal),
+                                                     viennacl::cuda_arg<unsigned int>(block_indices),
+                                                     viennacl::cuda_arg(vec),
                                                      static_cast<unsigned int>(U.lhs().size1())
                                                     );
   }
@@ -951,15 +986,15 @@ void prod_impl(const viennacl::compressed_compressed_matrix<NumericT> & mat,
                const viennacl::vector_base<NumericT> & vec,
                      viennacl::vector_base<NumericT> & result)
 {
-  compressed_compressed_matrix_vec_mul_kernel<<<128, 128>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                                            detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                                            detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                                            detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
+  compressed_compressed_matrix_vec_mul_kernel<<<128, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                            viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                                            viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                            viennacl::cuda_arg<NumericT>(mat.handle()),
                                                             static_cast<unsigned int>(mat.nnz1()),
-                                                            detail::cuda_arg<NumericT>(vec),
+                                                            viennacl::cuda_arg(vec),
                                                             static_cast<unsigned int>(vec.start()),
                                                             static_cast<unsigned int>(vec.stride()),
-                                                            detail::cuda_arg<NumericT>(result),
+                                                            viennacl::cuda_arg(result),
                                                             static_cast<unsigned int>(result.start()),
                                                             static_cast<unsigned int>(result.stride()),
                                                             static_cast<unsigned int>(result.size())
@@ -1107,10 +1142,10 @@ namespace detail
                 vector_base<NumericT> & vec,
                 viennacl::linalg::detail::row_info_types info_selector)
   {
-    coo_row_info_extractor<<<64, 128>>>(detail::cuda_arg<unsigned int>(mat.handle12().cuda_handle()),
-                                         detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                         detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                         detail::cuda_arg<NumericT>(vec),
+    coo_row_info_extractor<<<64, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle12()),
+                                         viennacl::cuda_arg<NumericT>(mat.handle()),
+                                         viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                         viennacl::cuda_arg(vec),
                                          static_cast<unsigned int>(info_selector)
                                         );
     VIENNACL_CUDA_LAST_ERROR_CHECK("coo_row_info_extractor");
@@ -1203,13 +1238,13 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & mat,
 {
   result.clear();
 
-  coordinate_matrix_vec_mul_kernel<<<64, 128>>>(detail::cuda_arg<unsigned int>(mat.handle12().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                                detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                                detail::cuda_arg<NumericT>(vec),
+  coordinate_matrix_vec_mul_kernel<<<64, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle12()),
+                                                viennacl::cuda_arg<NumericT>(mat.handle()),
+                                                viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                                viennacl::cuda_arg(vec),
                                                 static_cast<unsigned int>(vec.start()),
                                                 static_cast<unsigned int>(vec.stride()),
-                                                detail::cuda_arg<NumericT>(result),
+                                                viennacl::cuda_arg(result),
                                                 static_cast<unsigned int>(result.start()),
                                                 static_cast<unsigned int>(result.stride())
                                                );
@@ -1330,17 +1365,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.row_major() && result.row_major())
   {
     coordinate_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<64, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1351,17 +1386,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.row_major() && !result.row_major())
   {
     coordinate_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<64, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1372,17 +1407,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.row_major() && result.row_major())
   {
     coordinate_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<64, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1393,17 +1428,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     coordinate_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<64, 128>>>
-                                                  (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                   detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                   detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                  (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                   viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                   viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                   detail::cuda_arg<NumericT>(d_mat),
+                                                   viennacl::cuda_arg(d_mat),
                                                    static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                                    static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                                   detail::cuda_arg<NumericT>(result),
+                                                   viennacl::cuda_arg(result),
                                                    static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                    static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1526,17 +1561,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.lhs().row_major() && result.row_major())
   {
     coordinate_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<64, 128>>>
-                                                    (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                    (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                     viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                     viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                     detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                     viennacl::cuda_arg(d_mat.lhs()),
                                                      static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                     detail::cuda_arg<NumericT>(result),
+                                                     viennacl::cuda_arg(result),
                                                      static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1547,17 +1582,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.lhs().row_major() && !result.row_major())
   {
     coordinate_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<64, 128>>>
-                                                    (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                    (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                     viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                     viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                     detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                     viennacl::cuda_arg(d_mat.lhs()),
                                                      static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                     detail::cuda_arg<NumericT>(result),
+                                                     viennacl::cuda_arg(result),
                                                      static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1568,17 +1603,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.lhs().row_major() && result.row_major())
   {
     coordinate_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<64, 128>>>
-                                                    (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                    (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                     viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                     viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                     detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                     viennacl::cuda_arg(d_mat.lhs()),
                                                      static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                     detail::cuda_arg<NumericT>(result),
+                                                     viennacl::cuda_arg(result),
                                                      static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1589,17 +1624,17 @@ void prod_impl(const viennacl::coordinate_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     coordinate_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<64, 128>>>
-                                                    (detail::cuda_arg<unsigned int>(sp_mat.handle12().cuda_handle()),
-                                                     detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
-                                                     detail::cuda_arg<unsigned int>(sp_mat.handle3().cuda_handle()),
+                                                    (viennacl::cuda_arg<unsigned int>(sp_mat.handle12()),
+                                                     viennacl::cuda_arg<NumericT>(sp_mat.handle()),
+                                                     viennacl::cuda_arg<unsigned int>(sp_mat.handle3()),
 
-                                                     detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                                     viennacl::cuda_arg(d_mat.lhs()),
                                                      static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                      static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                                     detail::cuda_arg<NumericT>(result),
+                                                     viennacl::cuda_arg(result),
                                                      static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                      static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1667,12 +1702,12 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & mat,
                const viennacl::vector_base<NumericT> & vec,
                      viennacl::vector_base<NumericT> & result)
 {
-  ell_matrix_vec_mul_kernel<<<256, 128>>>(detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(vec),
+  ell_matrix_vec_mul_kernel<<<256, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                          viennacl::cuda_arg<NumericT>(mat.handle()),
+                                          viennacl::cuda_arg(vec),
                                           static_cast<unsigned int>(vec.start()),
                                           static_cast<unsigned int>(vec.stride()),
-                                          detail::cuda_arg<NumericT>(result),
+                                          viennacl::cuda_arg(result),
                                           static_cast<unsigned int>(result.start()),
                                           static_cast<unsigned int>(result.stride()),
                                           static_cast<unsigned int>(mat.size1()),
@@ -1762,20 +1797,20 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.row_major() && result.row_major())
   {
     ell_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                           (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                            detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                           (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                            viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                             static_cast<unsigned int>(sp_mat.size1()),
                                             static_cast<unsigned int>(sp_mat.size2()),
                                             static_cast<unsigned int>(sp_mat.internal_size1()),
                                             static_cast<unsigned int>(sp_mat.maxnnz()),
                                             static_cast<unsigned int>(sp_mat.internal_maxnnz()),
-                                            detail::cuda_arg<NumericT>(d_mat),
+                                            viennacl::cuda_arg(d_mat),
                                             static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                            detail::cuda_arg<NumericT>(result),
+                                            viennacl::cuda_arg(result),
                                             static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                             static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1786,20 +1821,20 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.row_major() && !result.row_major())
   {
     ell_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                           (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                            detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                           (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                            viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                             static_cast<unsigned int>(sp_mat.size1()),
                                             static_cast<unsigned int>(sp_mat.size2()),
                                             static_cast<unsigned int>(sp_mat.internal_size1()),
                                             static_cast<unsigned int>(sp_mat.maxnnz()),
                                             static_cast<unsigned int>(sp_mat.internal_maxnnz()),
-                                            detail::cuda_arg<NumericT>(d_mat),
+                                            viennacl::cuda_arg(d_mat),
                                             static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                            detail::cuda_arg<NumericT>(result),
+                                            viennacl::cuda_arg(result),
                                             static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                             static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1810,20 +1845,20 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.row_major() && result.row_major())
   {
     ell_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                           (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                            detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                           (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                            viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                             static_cast<unsigned int>(sp_mat.size1()),
                                             static_cast<unsigned int>(sp_mat.size2()),
                                             static_cast<unsigned int>(sp_mat.internal_size1()),
                                             static_cast<unsigned int>(sp_mat.maxnnz()),
                                             static_cast<unsigned int>(sp_mat.internal_maxnnz()),
-                                            detail::cuda_arg<NumericT>(d_mat),
+                                            viennacl::cuda_arg(d_mat),
                                             static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                            detail::cuda_arg<NumericT>(result),
+                                            viennacl::cuda_arg(result),
                                             static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                             static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1834,20 +1869,20 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     ell_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                           (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                            detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                           (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                            viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                             static_cast<unsigned int>(sp_mat.size1()),
                                             static_cast<unsigned int>(sp_mat.size2()),
                                             static_cast<unsigned int>(sp_mat.internal_size1()),
                                             static_cast<unsigned int>(sp_mat.maxnnz()),
                                             static_cast<unsigned int>(sp_mat.internal_maxnnz()),
-                                            detail::cuda_arg<NumericT>(d_mat),
+                                            viennacl::cuda_arg(d_mat),
                                             static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
                                             static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-                                            detail::cuda_arg<NumericT>(result),
+                                            viennacl::cuda_arg(result),
                                             static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                             static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                             static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1937,21 +1972,21 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   if (d_mat.lhs().row_major() && result.row_major())
   {
     ell_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                              (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                               detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                              (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                               viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                                static_cast<unsigned int>(sp_mat.size1()),
                                                static_cast<unsigned int>(sp_mat.size2()),
                                                static_cast<unsigned int>(sp_mat.internal_size1()),
                                                static_cast<unsigned int>(sp_mat.maxnnz()),
                                                static_cast<unsigned int>(sp_mat.internal_maxnnz()),
 
-                                               detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                               viennacl::cuda_arg(d_mat.lhs()),
                                                static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                               detail::cuda_arg<NumericT>(result),
+                                               viennacl::cuda_arg(result),
                                                static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1962,21 +1997,21 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else if (d_mat.lhs().row_major() && !result.row_major())
   {
     ell_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                              (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                               detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                              (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                               viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                                static_cast<unsigned int>(sp_mat.size1()),
                                                static_cast<unsigned int>(sp_mat.size2()),
                                                static_cast<unsigned int>(sp_mat.internal_size1()),
                                                static_cast<unsigned int>(sp_mat.maxnnz()),
                                                static_cast<unsigned int>(sp_mat.internal_maxnnz()),
 
-                                               detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                               viennacl::cuda_arg(d_mat.lhs()),
                                                static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                               detail::cuda_arg<NumericT>(result),
+                                               viennacl::cuda_arg(result),
                                                static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -1987,21 +2022,21 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else if (!d_mat.lhs().row_major() && result.row_major())
   {
     ell_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<128, 128>>>
-                                              (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                               detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                              (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                               viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                                static_cast<unsigned int>(sp_mat.size1()),
                                                static_cast<unsigned int>(sp_mat.size2()),
                                                static_cast<unsigned int>(sp_mat.internal_size1()),
                                                static_cast<unsigned int>(sp_mat.maxnnz()),
                                                static_cast<unsigned int>(sp_mat.internal_maxnnz()),
 
-                                               detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                               viennacl::cuda_arg(d_mat.lhs()),
                                                static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                               detail::cuda_arg<NumericT>(result),
+                                               viennacl::cuda_arg(result),
                                                static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2012,21 +2047,21 @@ void prod_impl(const viennacl::ell_matrix<NumericT, AlignmentV> & sp_mat,
   else
   {
     ell_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<128, 128>>>
-                                              (detail::cuda_arg<unsigned int>(sp_mat.handle2().cuda_handle()),
-                                               detail::cuda_arg<NumericT>(sp_mat.handle().cuda_handle()),
+                                              (viennacl::cuda_arg<unsigned int>(sp_mat.handle2()),
+                                               viennacl::cuda_arg<NumericT>(sp_mat.handle()),
                                                static_cast<unsigned int>(sp_mat.size1()),
                                                static_cast<unsigned int>(sp_mat.size2()),
                                                static_cast<unsigned int>(sp_mat.internal_size1()),
                                                static_cast<unsigned int>(sp_mat.maxnnz()),
                                                static_cast<unsigned int>(sp_mat.internal_maxnnz()),
 
-                                               detail::cuda_arg<NumericT>(d_mat.lhs()),
+                                               viennacl::cuda_arg(d_mat.lhs()),
                                                static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
                                                static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-                                               detail::cuda_arg<NumericT>(result),
+                                               viennacl::cuda_arg(result),
                                                static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
                                                static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
                                                static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2052,28 +2087,31 @@ __global__ void sliced_ell_matrix_vec_mul_kernel(const unsigned int * columns_pe
                                                  NumericT * result,
                                                  unsigned int start_result,
                                                  unsigned int inc_result,
-                                                 unsigned int size_result)
+                                                 unsigned int size_result,
+                                                 unsigned int block_size)
 {
-  unsigned int local_id = threadIdx.x;
-  unsigned int local_size = blockDim.x;
-  unsigned int num_rows = size_result;
+  unsigned int blocks_per_threadblock = blockDim.x / block_size;
+  unsigned int id_in_block = threadIdx.x % block_size;
+  unsigned int num_blocks = (size_result - 1) / block_size + 1;
+  unsigned int global_warp_count = blocks_per_threadblock * gridDim.x;
+  unsigned int global_warp_id = blocks_per_threadblock * blockIdx.x + threadIdx.x / block_size;
 
-  for (unsigned int block_idx = blockIdx.x; block_idx <= num_rows / local_size; block_idx += gridDim.x)
+  for (unsigned int block_idx = global_warp_id; block_idx < num_blocks; block_idx += global_warp_count)
   {
-    unsigned int row         = block_idx * local_size + local_id;
+    unsigned int row         = block_idx * block_size + id_in_block;
     unsigned int offset      = block_start[block_idx];
     unsigned int num_columns = columns_per_block[block_idx];
 
     NumericT sum = 0;
     for (unsigned int item_id = 0; item_id < num_columns; item_id++)
     {
-      unsigned int index = offset + item_id * local_size + local_id;
+      unsigned int index = offset + item_id * block_size + id_in_block;
       NumericT val = elements[index];
 
       sum += val ? (x[column_indices[index] * inc_x + start_x] * val) : 0;
     }
 
-    if (row < num_rows)
+    if (row < size_result)
       result[row * inc_result + start_result] = sum;
   }
 }
@@ -2091,18 +2129,19 @@ void prod_impl(const viennacl::sliced_ell_matrix<NumericT, IndexT> & mat,
                const viennacl::vector_base<NumericT> & vec,
                      viennacl::vector_base<NumericT> & result)
 {
-  sliced_ell_matrix_vec_mul_kernel<<<128, mat.rows_per_block()>>>(detail::cuda_arg<unsigned int>(mat.handle1().cuda_handle()),
-                                                                  detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                                                  detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                                                  detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                                                  detail::cuda_arg<NumericT>(vec),
-                                                                  static_cast<unsigned int>(vec.start()),
-                                                                  static_cast<unsigned int>(vec.stride()),
-                                                                  static_cast<unsigned int>(vec.size()),
-                                                                  detail::cuda_arg<NumericT>(result),
-                                                                  static_cast<unsigned int>(result.start()),
-                                                                  static_cast<unsigned int>(result.stride()),
-                                                                  static_cast<unsigned int>(result.size())
+  sliced_ell_matrix_vec_mul_kernel<<<256, 256>>>(viennacl::cuda_arg<unsigned int>(mat.handle1()),
+                                                 viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                                 viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                                 viennacl::cuda_arg<NumericT>(mat.handle()),
+                                                 viennacl::cuda_arg(vec),
+                                                 static_cast<unsigned int>(vec.start()),
+                                                 static_cast<unsigned int>(vec.stride()),
+                                                 static_cast<unsigned int>(vec.size()),
+                                                 viennacl::cuda_arg(result),
+                                                 static_cast<unsigned int>(result.start()),
+                                                 static_cast<unsigned int>(result.stride()),
+                                                 static_cast<unsigned int>(result.size()),
+                                                 static_cast<unsigned int>(mat.rows_per_block())
                                                                  );
   VIENNACL_CUDA_LAST_ERROR_CHECK("sliced_ell_matrix_vec_mul_kernel");
 }
@@ -2176,15 +2215,15 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
                const viennacl::vector_base<NumericT> & vec,
                      viennacl::vector_base<NumericT> & result)
 {
-  hyb_matrix_vec_mul_kernel<<<256, 128>>>(detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-                                          detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-                                          detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
-                                          detail::cuda_arg<NumericT>(vec),
+  hyb_matrix_vec_mul_kernel<<<256, 128>>>(viennacl::cuda_arg<unsigned int>(mat.handle2()),
+                                          viennacl::cuda_arg<NumericT>(mat.handle()),
+                                          viennacl::cuda_arg<unsigned int>(mat.handle3()),
+                                          viennacl::cuda_arg<unsigned int>(mat.handle4()),
+                                          viennacl::cuda_arg<NumericT>(mat.handle5()),
+                                          viennacl::cuda_arg(vec),
                                           static_cast<unsigned int>(vec.start()),
                                           static_cast<unsigned int>(vec.stride()),
-                                          detail::cuda_arg<NumericT>(result),
+                                          viennacl::cuda_arg(result),
                                           static_cast<unsigned int>(result.start()),
                                           static_cast<unsigned int>(result.stride()),
                                           static_cast<unsigned int>(mat.size1()),
@@ -2286,23 +2325,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   if (d_mat.row_major() && result.row_major())
   {
     hyb_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat),
+      viennacl::cuda_arg(d_mat),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2313,23 +2352,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else if (d_mat.row_major() && !result.row_major())
   {
     hyb_matrix_d_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat),
+      viennacl::cuda_arg(d_mat),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2340,23 +2379,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else if (!d_mat.row_major() && result.row_major())
   {
     hyb_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat),
+      viennacl::cuda_arg(d_mat),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2367,23 +2406,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else
   {
     hyb_matrix_d_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat),
+      viennacl::cuda_arg(d_mat),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat)),         static_cast<unsigned int>(viennacl::traits::start2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat)),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat)),          static_cast<unsigned int>(viennacl::traits::size2(d_mat)),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat)), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat)),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2486,23 +2525,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   if (d_mat.lhs().row_major() && result.row_major())
   {
     hyb_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<row_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat.lhs()),
+      viennacl::cuda_arg(d_mat.lhs()),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2513,23 +2552,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else if (d_mat.lhs().row_major() && !result.row_major())
   {
     hyb_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<row_major>, mat_mult_matrix_index<column_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat.lhs()),
+      viennacl::cuda_arg(d_mat.lhs()),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2540,23 +2579,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else if (!d_mat.lhs().row_major() && result.row_major())
   {
     hyb_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<row_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat.lhs()),
+      viennacl::cuda_arg(d_mat.lhs()),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),
@@ -2567,23 +2606,23 @@ void prod_impl(const viennacl::hyb_matrix<NumericT, AlignmentV> & mat,
   else
   {
     hyb_matrix_d_tr_mat_mul_kernel<mat_mult_matrix_index<column_major>, mat_mult_matrix_index<column_major> ><<<256, 128>>>(
-      detail::cuda_arg<unsigned int>(mat.handle2().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle3().cuda_handle()),
-      detail::cuda_arg<unsigned int>(mat.handle4().cuda_handle()),
-      detail::cuda_arg<NumericT>(mat.handle5().cuda_handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle2()),
+      viennacl::cuda_arg<NumericT>(mat.handle()),
+      viennacl::cuda_arg<unsigned int>(mat.handle3()),
+      viennacl::cuda_arg<unsigned int>(mat.handle4()),
+      viennacl::cuda_arg<NumericT>(mat.handle5()),
       static_cast<unsigned int>(mat.size1()),
       static_cast<unsigned int>(mat.internal_size1()),
       static_cast<unsigned int>(mat.ell_nnz()),
       static_cast<unsigned int>(mat.internal_ellnnz()),
 
-      detail::cuda_arg<NumericT>(d_mat.lhs()),
+      viennacl::cuda_arg(d_mat.lhs()),
       static_cast<unsigned int>(viennacl::traits::start1(d_mat.lhs())),         static_cast<unsigned int>(viennacl::traits::start2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::stride1(d_mat.lhs())),        static_cast<unsigned int>(viennacl::traits::stride2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::size1(d_mat.lhs())),          static_cast<unsigned int>(viennacl::traits::size2(d_mat.lhs())),
       static_cast<unsigned int>(viennacl::traits::internal_size1(d_mat.lhs())), static_cast<unsigned int>(viennacl::traits::internal_size2(d_mat.lhs())),
 
-      detail::cuda_arg<NumericT>(result),
+      viennacl::cuda_arg(result),
       static_cast<unsigned int>(viennacl::traits::start1(result)),         static_cast<unsigned int>(viennacl::traits::start2(result)),
       static_cast<unsigned int>(viennacl::traits::stride1(result)),        static_cast<unsigned int>(viennacl::traits::stride2(result)),
       static_cast<unsigned int>(viennacl::traits::size1(result)),          static_cast<unsigned int>(viennacl::traits::size2(result)),

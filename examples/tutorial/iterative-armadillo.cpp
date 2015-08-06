@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -15,7 +15,7 @@
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
 
-/** \example iterative-eigen.cpp
+/** \example iterative-armadillo.cpp
 *
 *   The following tutorial shows how to use the iterative solvers in ViennaCL with objects from the <a href="http://eigen.tuxfamily.org/">Eigen Library</a> directly.
 *
@@ -47,9 +47,7 @@
 
 
 // Some helper functions for this tutorial:
-#include "Random.hpp"
 #include "vector-io.hpp"
-#include "../benchmarks/benchmark-utils.hpp"
 
 /**
 *  In the following we run the CG method, the BiCGStab method, and the GMRES method with Armadillo types directly.

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -44,7 +44,6 @@
 
 
 // Additional helper functions for this tutorial:
-#include "Random.hpp"
 #include "vector-io.hpp"
 
 // Shortcut for writing 'ublas::' instead of 'boost::numeric::ublas::'

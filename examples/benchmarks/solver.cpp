@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -44,27 +44,30 @@
 #include "viennacl/linalg/cg.hpp"
 #include "viennacl/linalg/bicgstab.hpp"
 #include "viennacl/linalg/gmres.hpp"
+#include "viennacl/linalg/mixed_precision_cg.hpp"
 
 #include "viennacl/linalg/ilu.hpp"
 #include "viennacl/linalg/ichol.hpp"
 #include "viennacl/linalg/jacobi_precond.hpp"
 #include "viennacl/linalg/row_scaling.hpp"
 
-#ifdef VIENNACL_WITH_OPENCL
-  #include "viennacl/linalg/mixed_precision_cg.hpp"
-#endif
-
 #include "viennacl/io/matrix_market.hpp"
+#include "viennacl/tools/timer.hpp"
 
 
 #include <iostream>
 #include <vector>
-#include "benchmark-utils.hpp"
 
 
 using namespace boost::numeric;
 
 #define BENCHMARK_RUNS          1
+
+
+inline void printOps(double num_ops, double exec_time)
+{
+  std::cout << "GFLOPs: " << num_ops / (1000000 * exec_time * 1000) << std::endl;
+}
 
 
 template<typename ScalarType>
@@ -97,7 +100,7 @@ ScalarType diff_2(ublas::vector<ScalarType> & v1, viennacl::vector<ScalarType> &
 template<typename MatrixType, typename VectorType, typename SolverTag, typename PrecondTag>
 void run_solver(MatrixType const & matrix, VectorType const & rhs, VectorType const & ref_result, SolverTag const & solver, PrecondTag const & precond, long ops)
 {
-  Timer timer;
+  viennacl::tools::timer timer;
   VectorType result(rhs);
   VectorType residual(rhs);
   viennacl::backend::finish();
@@ -123,13 +126,8 @@ void run_solver(MatrixType const & matrix, VectorType const & rhs, VectorType co
 template<typename ScalarType>
 int run_benchmark(viennacl::context ctx)
 {
-  Timer timer;
+  viennacl::tools::timer timer;
   double exec_time;
-
-  ScalarType std_factor1 = static_cast<ScalarType>(3.1415);
-  ScalarType std_factor2 = static_cast<ScalarType>(42.0);
-  viennacl::scalar<ScalarType> vcl_factor1(std_factor1, ctx);
-  viennacl::scalar<ScalarType> vcl_factor2(std_factor2, ctx);
 
   ublas::vector<ScalarType> ublas_vec1;
   ublas::vector<ScalarType> ublas_vec2;
@@ -144,7 +142,6 @@ int run_benchmark(viennacl::context ctx)
     std::cout << "Error reading Matrix file" << std::endl;
     return EXIT_FAILURE;
   }
-  //unsigned int cg_mat_size = cg_mat.size();
   std::cout << "done reading matrix" << std::endl;
 
   ublas_result = ublas::scalar_vector<ScalarType>(ublas_matrix.size1(), ScalarType(1.0));
@@ -214,6 +211,19 @@ int run_benchmark(viennacl::context ctx)
   exec_time = timer.get();
   std::cout << "ViennaCL time: " << exec_time << std::endl;
 
+  std::cout << "------- Chow-Patel parallel ICC with ViennaCL ----------" << std::endl;
+
+  timer.start();
+  viennacl::linalg::chow_patel_icc_precond< viennacl::compressed_matrix<ScalarType> > vcl_chow_patel_icc(vcl_compressed_matrix, viennacl::linalg::chow_patel_tag());
+  viennacl::backend::finish();
+  std::cout << "Setup time: " << timer.get() << std::endl;
+
+  timer.start();
+  for (int runs=0; runs<BENCHMARK_RUNS; ++runs)
+    vcl_chow_patel_icc.apply(vcl_vec1);
+  viennacl::backend::finish();
+  std::cout << "ViennaCL Chow-Patel-ILU substitution time: " << timer.get() << std::endl;
+
 
   ///////////////////////////////////////////////////////////////////////////////
   //////////////////////           ILU preconditioner         //////////////////
@@ -229,7 +239,6 @@ int run_benchmark(viennacl::context ctx)
     ublas_ilu0.apply(ublas_vec1);
   exec_time = timer.get();
   std::cout << "ublas ILU0 substitution time (no level scheduling): " << exec_time << std::endl;
-
 
   std::cout << "------- ILU0 with ViennaCL ----------" << std::endl;
 
@@ -383,6 +392,18 @@ int run_benchmark(viennacl::context ctx)
   exec_time = timer.get();
   std::cout << "ViennaCL time: " << exec_time << std::endl;
 
+  std::cout << "------- Chow-Patel parallel ILU with ViennaCL ----------" << std::endl;
+
+  timer.start();
+  viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<ScalarType> > vcl_chow_patel_ilu(vcl_compressed_matrix, viennacl::linalg::chow_patel_tag());
+  viennacl::backend::finish();
+  std::cout << "Setup time: " << timer.get() << std::endl;
+
+  timer.start();
+  for (int runs=0; runs<BENCHMARK_RUNS; ++runs)
+    vcl_chow_patel_ilu.apply(vcl_vec1);
+  viennacl::backend::finish();
+  std::cout << "ViennaCL Chow-Patel-ILU substitution time: " << timer.get() << std::endl;
 
   ///////////////////////////////////////////////////////////////////////////////
   //////////////////////              CG solver                //////////////////
@@ -397,7 +418,6 @@ int run_benchmark(viennacl::context ctx)
   std::cout << "------- CG solver (no preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
   run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, cg_solver, viennacl::linalg::no_precond(), cg_ops);
 
-#ifdef VIENNACL_WITH_OPENCL
   bool is_double = (sizeof(ScalarType) == sizeof(double));
   if (is_double)
   {
@@ -405,9 +425,7 @@ int run_benchmark(viennacl::context ctx)
     viennacl::linalg::mixed_precision_cg_tag mixed_precision_cg_solver(solver_tolerance, solver_iters);
 
     run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, mixed_precision_cg_solver, viennacl::linalg::no_precond(), cg_ops);
-    run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, mixed_precision_cg_solver, viennacl::linalg::no_precond(), cg_ops);
   }
-#endif
 
   std::cout << "------- CG solver (no preconditioner) via ViennaCL, coordinate_matrix ----------" << std::endl;
   run_solver(vcl_coordinate_matrix, vcl_vec2, vcl_result, cg_solver, viennacl::linalg::no_precond(), cg_ops);
@@ -427,6 +445,8 @@ int run_benchmark(viennacl::context ctx)
   std::cout << "------- CG solver (ICHOL0 preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
   run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, cg_solver, vcl_ichol0, cg_ops);
 
+  std::cout << "------- CG solver (Chow-Patel ICHOL0 preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
+  run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, cg_solver, vcl_chow_patel_icc, cg_ops);
 
   std::cout << "------- CG solver (ILU0 preconditioner) using ublas ----------" << std::endl;
   run_solver(ublas_matrix, ublas_vec2, ublas_result, cg_solver, ublas_ilu0, cg_ops);
@@ -475,7 +495,6 @@ int run_benchmark(viennacl::context ctx)
   std::cout << "------- CG solver (row scaling preconditioner) via ViennaCL, coordinate_matrix ----------" << std::endl;
   run_solver(vcl_coordinate_matrix, vcl_vec2, vcl_result, cg_solver, vcl_row_scaling_coo, cg_ops);
 
-
   ///////////////////////////////////////////////////////////////////////////////
   //////////////////////           BiCGStab solver             //////////////////
   ///////////////////////////////////////////////////////////////////////////////
@@ -489,6 +508,12 @@ int run_benchmark(viennacl::context ctx)
 
   std::cout << "------- BiCGStab solver (no preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
   run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, bicgstab_solver, viennacl::linalg::no_precond(), bicgstab_ops);
+
+  std::cout << "------- BiCGStab solver (ILU0 preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
+  run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, bicgstab_solver, vcl_ilu0, bicgstab_ops);
+
+  std::cout << "------- BiCGStab solver (Chow-Patel-ILU preconditioner) via ViennaCL, compressed_matrix ----------" << std::endl;
+  run_solver(vcl_compressed_matrix, vcl_vec2, vcl_result, bicgstab_solver, vcl_chow_patel_ilu, bicgstab_ops);
 
   std::cout << "------- BiCGStab solver (no preconditioner) via ViennaCL, coordinate_matrix ----------" << std::endl;
   run_solver(vcl_coordinate_matrix, vcl_vec2, vcl_result, bicgstab_solver, viennacl::linalg::no_precond(), bicgstab_ops);

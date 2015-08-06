@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -31,9 +31,9 @@
 #include <string>
 #include <cmath>
 #include <algorithm>
-#include <stdio.h>
-#include <time.h>
-//#include "../benchmarks/benchmark-utils.hpp"
+#include <cstdio>
+#include <ctime>
+
 #include "viennacl/scalar.hpp"
 #include "viennacl/matrix.hpp"
 #include "viennacl/linalg/prod.hpp"

@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_BISECT_KERNEL_SMALL_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -140,7 +140,7 @@ bisectKernelSmall(const NumericT *g_d, const NumericT *g_s, const unsigned int n
         __syncthreads();
 
         is_active_second = 0;
-        subdivideActiveInterval(threadIdx.x,
+        subdivideActiveIntervalMulti(threadIdx.x,
                                 s_left, s_right, s_left_count, s_right_count,
                                 num_threads_active,
                                 left, right, left_count, right_count,

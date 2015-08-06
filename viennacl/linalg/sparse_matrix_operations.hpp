@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_SPARSE_MATRIX_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -217,13 +217,14 @@ namespace viennacl
 
     // A * B with both A and B sparse
 
-    /** @brief Carries out matrix-vector multiplication involving a sparse matrix type
+    /** @brief Carries out sparse_matrix-sparse_matrix multiplication for CSR matrices
     *
-    * Implementation of the convenience expression result = prod(mat, vec);
+    * Implementation of the convenience expression C = prod(A, B);
+    * Based on computing C(i, :) = A(i, :) * B via merging the respective rows of B
     *
-    * @param mat    The matrix
-    * @param vec    The vector
-    * @param result The result vector
+    * @param A     Left factor
+    * @param B     Right factor
+    * @param C     Result matrix
     */
     template<typename NumericT>
     void

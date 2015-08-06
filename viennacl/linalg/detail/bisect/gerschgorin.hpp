@@ -3,7 +3,7 @@
 
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -14,7 +14,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -83,8 +83,8 @@ namespace detail
       NumericT psi_0 = 11 * FLT_EPSILON * bnorm;
       NumericT psi_n = 11 * FLT_EPSILON * bnorm;
 
-      lg = lg - bnorm * 2 * NumericT(n) * FLT_EPSILON - psi_0;
-      ug = ug + bnorm * 2 * NumericT(n) * FLT_EPSILON + psi_n;
+      lg = lg - bnorm * 2 * static_cast<NumericT>(n) * FLT_EPSILON - psi_0;
+      ug = ug + bnorm * 2 * static_cast<NumericT>(n) * FLT_EPSILON + psi_n;
 
       ug = max(lg, ug);
   }

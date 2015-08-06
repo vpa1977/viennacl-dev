@@ -2,7 +2,7 @@
 #define VIENNACL_MATRIX_PROXY_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -72,6 +72,15 @@ public:
 
   using base_type::operator=;
 
+  // the following are needed for Visual Studio:
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix<OtherNumericT, F> const & B)                          { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix_range<viennacl::matrix<OtherNumericT, F> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix_slice<viennacl::matrix<OtherNumericT, F> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
 };
 
 template<typename MatrixType>
@@ -354,6 +363,15 @@ public:
 
   using base_type::operator=;
 
+  // the following are needed for Visual Studio:
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix<OtherNumericT, F> const & B)                          { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix_range<viennacl::matrix<OtherNumericT, F> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F>
+  base_type & operator=(viennacl::matrix_slice<viennacl::matrix<OtherNumericT, F> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
 };
 
 template<typename MatrixType>

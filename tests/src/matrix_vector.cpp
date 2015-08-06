@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -49,7 +49,8 @@
 #include "viennacl/linalg/norm_2.hpp"
 #include "viennacl/linalg/direct_solve.hpp"
 #include "viennacl/linalg/lu.hpp"
-#include "examples/tutorial/Random.hpp"
+#include "viennacl/linalg/sum.hpp"
+#include "viennacl/tools/random.hpp"
 
 //
 // -------------------------------------------------------------
@@ -195,6 +196,39 @@ int test_prod_rank1(Epsilon const & epsilon,
       retval = EXIT_FAILURE;
    }
    // --------------------------------------------------------------------------
+   std::cout << "Matrix-Vector product with matrix expression" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1 + ublas_m1, ublas_v2);
+   vcl_v1   = viennacl::linalg::prod(vcl_m1 + vcl_m1, vcl_v2);
+
+   if ( std::fabs(diff(ublas_v1, vcl_v1)) > epsilon )
+   {
+      std::cout << "# Error at operation: matrix-vector product" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v1, vcl_v1)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+   std::cout << "Matrix-Vector product with vector expression" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1, NumericT(3) * ublas_v2);
+   vcl_v1   = viennacl::linalg::prod(vcl_m1, NumericT(3) * vcl_v2);
+
+   if ( std::fabs(diff(ublas_v1, vcl_v1)) > epsilon )
+   {
+      std::cout << "# Error at operation: matrix-vector product" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v1, vcl_v1)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+   std::cout << "Matrix-Vector product with matrix and vector expression" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1 + ublas_m1, ublas_v2 + ublas_v2);
+   vcl_v1   = viennacl::linalg::prod(vcl_m1 + vcl_m1, vcl_v2 + vcl_v2);
+
+   if ( std::fabs(diff(ublas_v1, vcl_v1)) > epsilon )
+   {
+      std::cout << "# Error at operation: matrix-vector product" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v1, vcl_v1)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
 
    viennacl::copy(ublas_v1.begin(), ublas_v1.end(), vcl_v1.begin());
    viennacl::copy(ublas_v2.begin(), ublas_v2.end(), vcl_v2.begin());
@@ -221,6 +255,55 @@ int test_prod_rank1(Epsilon const & epsilon,
       retval = EXIT_FAILURE;
    }
    // --------------------------------------------------------------------------
+
+   std::cout << "Row sum with matrix" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1, ublas::scalar_vector<NumericT>(ublas_m1.size2(), NumericT(1)));
+   vcl_v1   = viennacl::linalg::row_sum(vcl_m1);
+
+   if ( std::fabs(diff(ublas_v1, vcl_v1)) > epsilon )
+   {
+      std::cout << "# Error at operation: row sum" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v1, vcl_v1)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Row sum with matrix expression" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1 + ublas_m1, ublas::scalar_vector<NumericT>(ublas_m1.size2(), NumericT(1)));
+   vcl_v1   = viennacl::linalg::row_sum(vcl_m1 + vcl_m1);
+
+   if ( std::fabs(diff(ublas_v1, vcl_v1)) > epsilon )
+   {
+      std::cout << "# Error at operation: row sum (with expression)" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v1, vcl_v1)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Column sum with matrix" << std::endl;
+   ublas_v2 = ublas::prod(trans(ublas_m1), ublas::scalar_vector<NumericT>(ublas_m1.size1(), NumericT(1)));
+   vcl_v2   = viennacl::linalg::column_sum(vcl_m1);
+
+   if ( std::fabs(diff(ublas_v2, vcl_v2)) > epsilon )
+   {
+      std::cout << "# Error at operation: column sum" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v2, vcl_v2)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Column sum with matrix expression" << std::endl;
+   ublas_v2 = ublas::prod(trans(ublas_m1 + ublas_m1), ublas::scalar_vector<NumericT>(ublas_m1.size1(), NumericT(1)));
+   vcl_v2   = viennacl::linalg::column_sum(vcl_m1 + vcl_m1);
+
+   if ( std::fabs(diff(ublas_v2, vcl_v2)) > epsilon )
+   {
+      std::cout << "# Error at operation: column sum (with expression)" << std::endl;
+      std::cout << "  diff: " << std::fabs(diff(ublas_v2, vcl_v2)) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
 
    viennacl::copy(ublas_v1.begin(), ublas_v1.end(), vcl_v1.begin());
    viennacl::copy(ublas_v2.begin(), ublas_v2.end(), vcl_v2.begin());
@@ -412,13 +495,15 @@ int test(Epsilon const& epsilon)
 {
    int retval = EXIT_SUCCESS;
 
+   viennacl::tools::uniform_random_numbers<NumericT> randomNumber;
+
    std::size_t num_rows = 141; //note: use num_rows > num_cols + 3 for diag() tests to work
    std::size_t num_cols = 103;
 
    // --------------------------------------------------------------------------
    ublas::vector<NumericT> ublas_v1(num_rows);
    for (std::size_t i = 0; i < ublas_v1.size(); ++i)
-     ublas_v1(i) = random<NumericT>();
+     ublas_v1(i) = randomNumber();
    ublas::vector<NumericT> ublas_v2 = ublas::scalar_vector<NumericT>(num_cols, NumericT(3.1415));
 
 
@@ -426,7 +511,7 @@ int test(Epsilon const& epsilon)
 
    for (std::size_t i = 0; i < ublas_m1.size1(); ++i)
       for (std::size_t j = 0; j < ublas_m1.size2(); ++j)
-         ublas_m1(i,j) = static_cast<NumericT>(0.1) * random<NumericT>();
+         ublas_m1(i,j) = static_cast<NumericT>(0.1) * randomNumber();
 
 
    ublas::matrix<NumericT> ublas_m2(ublas_v1.size(), ublas_v1.size());
@@ -434,8 +519,8 @@ int test(Epsilon const& epsilon)
    for (std::size_t i = 0; i < ublas_m2.size1(); ++i)
    {
       for (std::size_t j = 0; j < ublas_m2.size2(); ++j)
-         ublas_m2(i,j) = static_cast<NumericT>(-0.1) * random<NumericT>();
-      ublas_m2(i, i) = static_cast<NumericT>(2) + random<NumericT>();
+         ublas_m2(i,j) = static_cast<NumericT>(-0.1) * randomNumber();
+      ublas_m2(i, i) = static_cast<NumericT>(2) + randomNumber();
    }
 
 
@@ -1018,13 +1103,13 @@ int test(Epsilon const& epsilon)
 
    for (std::size_t i=0; i<lu_dim; ++i)
      for (std::size_t j=0; j<lu_dim; ++j)
-       square_matrix(i,j) = -static_cast<NumericT>(0.5) * random<NumericT>();
+       square_matrix(i,j) = -static_cast<NumericT>(0.5) * randomNumber();
 
    //put some more weight on diagonal elements:
    for (std::size_t j=0; j<lu_dim; ++j)
    {
-     square_matrix(j,j) = static_cast<NumericT>(20.0) + random<NumericT>();
-     lu_rhs(j) = random<NumericT>();
+     square_matrix(j,j) = static_cast<NumericT>(20.0) + randomNumber();
+     lu_rhs(j) = randomNumber();
    }
 
    viennacl::copy(square_matrix, vcl_square_matrix);

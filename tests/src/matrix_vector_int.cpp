@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -48,7 +48,7 @@
 #include "viennacl/linalg/norm_2.hpp"
 #include "viennacl/linalg/direct_solve.hpp"
 #include "viennacl/linalg/lu.hpp"
-#include "examples/tutorial/Random.hpp"
+#include "viennacl/linalg/sum.hpp"
 
 //
 // -------------------------------------------------------------
@@ -210,6 +210,55 @@ int test_prod_rank1(UblasMatrixType & ublas_m1, UblasVectorType & ublas_v1, Ubla
    if ( diff(ublas_v2, vcl_v2) != 0 )
    {
       std::cout << "# Error at operation: transposed matrix-vector product with scaled additions" << std::endl;
+      std::cout << "  diff: " << diff(ublas_v2, vcl_v2) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+
+   std::cout << "Row sum with matrix" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1, ublas::scalar_vector<NumericT>(ublas_m1.size2(), NumericT(1)));
+   vcl_v1   = viennacl::linalg::row_sum(vcl_m1);
+
+   if ( diff(ublas_v1, vcl_v1) != 0 )
+   {
+      std::cout << "# Error at operation: row sum" << std::endl;
+      std::cout << "  diff: " << diff(ublas_v1, vcl_v1) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Row sum with matrix expression" << std::endl;
+   ublas_v1 = ublas::prod(ublas_m1 + ublas_m1, ublas::scalar_vector<NumericT>(ublas_m1.size2(), NumericT(1)));
+   vcl_v1   = viennacl::linalg::row_sum(vcl_m1 + vcl_m1);
+
+   if ( diff(ublas_v1, vcl_v1) != 0 )
+   {
+      std::cout << "# Error at operation: row sum (with expression)" << std::endl;
+      std::cout << "  diff: " << diff(ublas_v1, vcl_v1) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Column sum with matrix" << std::endl;
+   ublas_v2 = ublas::prod(trans(ublas_m1), ublas::scalar_vector<NumericT>(ublas_m1.size1(), NumericT(1)));
+   vcl_v2   = viennacl::linalg::column_sum(vcl_m1);
+
+   if ( diff(ublas_v2, vcl_v2) != 0 )
+   {
+      std::cout << "# Error at operation: column sum" << std::endl;
+      std::cout << "  diff: " << diff(ublas_v2, vcl_v2) << std::endl;
+      retval = EXIT_FAILURE;
+   }
+   // --------------------------------------------------------------------------
+
+   std::cout << "Column sum with matrix expression" << std::endl;
+   ublas_v2 = ublas::prod(trans(ublas_m1 + ublas_m1), ublas::scalar_vector<NumericT>(ublas_m1.size1(), NumericT(1)));
+   vcl_v2   = viennacl::linalg::column_sum(vcl_m1 + vcl_m1);
+
+   if ( diff(ublas_v2, vcl_v2) != 0 )
+   {
+      std::cout << "# Error at operation: column sum (with expression)" << std::endl;
       std::cout << "  diff: " << diff(ublas_v2, vcl_v2) << std::endl;
       retval = EXIT_FAILURE;
    }

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -44,8 +44,6 @@
 //include the generic inner product functions of ViennaCL
 #include "viennacl/linalg/norm_2.hpp"
 
-// Some helper functions for this tutorial:
-#include "Random.hpp"
 
 #include <boost/thread.hpp>
 

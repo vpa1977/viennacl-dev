@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_NMF_OPERATIONS_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -94,9 +94,9 @@ void nmf(viennacl::matrix_base<NumericT> const & V,
     htmp = viennacl::linalg::prod(trans(W), W);
     hd = viennacl::linalg::prod(htmp, H);
 
-    el_wise_mul_div<<<128, 128>>>(detail::cuda_arg<NumericT>(H),
-                                  detail::cuda_arg<NumericT>(hn),
-                                  detail::cuda_arg<NumericT>(hd),
+    el_wise_mul_div<<<128, 128>>>(viennacl::cuda_arg<NumericT>(H),
+                                  viennacl::cuda_arg<NumericT>(hn),
+                                  viennacl::cuda_arg<NumericT>(hd),
                                   static_cast<unsigned int>(H.internal_size1() * H.internal_size2()));
     VIENNACL_CUDA_LAST_ERROR_CHECK("el_wise_mul_div");
 
@@ -104,9 +104,9 @@ void nmf(viennacl::matrix_base<NumericT> const & V,
     wtmp = viennacl::linalg::prod(W, H);
     wd   = viennacl::linalg::prod(wtmp, trans(H));
 
-    el_wise_mul_div<<<128, 128>>>(detail::cuda_arg<NumericT>(W),
-                                  detail::cuda_arg<NumericT>(wn),
-                                  detail::cuda_arg<NumericT>(wd),
+    el_wise_mul_div<<<128, 128>>>(viennacl::cuda_arg<NumericT>(W),
+                                  viennacl::cuda_arg<NumericT>(wn),
+                                  viennacl::cuda_arg<NumericT>(wd),
                                   static_cast<unsigned int>( W.internal_size1() * W.internal_size2()));
     VIENNACL_CUDA_LAST_ERROR_CHECK("el_wise_mul_div");
 

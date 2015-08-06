@@ -2,7 +2,7 @@
 #define VIENNACL_VECTOR_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -334,6 +334,22 @@ vector_base<NumericT, SizeT, DistanceT>::vector_base(const vector_base<NumericT,
   }
 }
 
+// Conversion CTOR:
+template<typename NumericT, typename SizeT, typename DistanceT>
+template<typename OtherNumericT>
+vector_base<NumericT, SizeT, DistanceT>::vector_base(const vector_base<OtherNumericT> & other) :
+  size_(other.size()), start_(0), stride_(1),
+  internal_size_(viennacl::tools::align_to_multiple<size_type>(other.size(), dense_padding_size))
+{
+  elements_.switch_active_handle_id(viennacl::traits::active_handle_id(other));
+  if (internal_size() > 0)
+  {
+    viennacl::backend::memory_create(elements_, sizeof(NumericT)*internal_size(), viennacl::traits::context(other));
+    clear();
+    self_type::operator=(other);
+  }
+}
+
 
 
 template<class NumericT, typename SizeT, typename DistanceT>
@@ -389,10 +405,10 @@ vector_base<NumericT, SizeT, DistanceT> & vector_base<NumericT, SizeT, DistanceT
   return *this;
 }
 
-// assign vector range or vector slice
+// convert from vector with other numeric type
 template<class NumericT, typename SizeT, typename DistanceT>
-template<typename T>
-vector_base<NumericT, SizeT, DistanceT> & vector_base<NumericT, SizeT, DistanceT>:: operator = (const vector_base<T> & v1)
+template<typename OtherNumericT>
+vector_base<NumericT, SizeT, DistanceT> & vector_base<NumericT, SizeT, DistanceT>:: operator = (const vector_base<OtherNumericT> & v1)
 {
   assert( ( (v1.size() == size()) || (size() == 0) )
           && bool("Incompatible vector sizes!"));
@@ -408,8 +424,7 @@ vector_base<NumericT, SizeT, DistanceT> & vector_base<NumericT, SizeT, DistanceT
     }
   }
 
-  viennacl::linalg::av(*this,
-                       v1, NumericT(1.0), 1, false, false);
+  viennacl::linalg::convert(*this, v1);
 
   return *this;
 }
@@ -1350,16 +1365,16 @@ void copy(vector_base<NumericT> const & gpu_vec, CPUVECTOR & cpu_vec )
 
 
 #ifdef VIENNACL_WITH_EIGEN
-template<unsigned int AlignmentV>
-void copy(vector<float, AlignmentV> const & gpu_vec,
-          Eigen::VectorXf & eigen_vec)
+template<typename NumericT, unsigned int AlignmentV>
+void copy(vector<NumericT, AlignmentV> const & gpu_vec,
+          Eigen::Matrix<NumericT, Eigen::Dynamic, 1> & eigen_vec)
 {
   viennacl::fast_copy(gpu_vec.begin(), gpu_vec.end(), &(eigen_vec[0]));
 }
 
-template<unsigned int AlignmentV>
-void copy(vector<double, AlignmentV> & gpu_vec,
-          Eigen::VectorXd & eigen_vec)
+template<typename NumericT, unsigned int AlignmentV, int EigenMapTypeV, typename EigenStrideT>
+void copy(vector<NumericT, AlignmentV> const & gpu_vec,
+          Eigen::Map<Eigen::Matrix<NumericT, Eigen::Dynamic, 1>, EigenMapTypeV, EigenStrideT> & eigen_vec)
 {
   viennacl::fast_copy(gpu_vec.begin(), gpu_vec.end(), &(eigen_vec[0]));
 }
@@ -1512,24 +1527,18 @@ void copy(HostVectorT const & cpu_vec, vector<T, AlignmentV> & gpu_vec)
 
 
 #ifdef VIENNACL_WITH_EIGEN
-template<unsigned int AlignmentV>
-void copy(Eigen::VectorXf const & eigen_vec,
-          vector<float, AlignmentV> & gpu_vec)
+template<typename NumericT, unsigned int AlignmentV>
+void copy(Eigen::Matrix<NumericT, Eigen::Dynamic, 1> const & eigen_vec,
+          vector<NumericT, AlignmentV> & gpu_vec)
 {
-  std::vector<float> entries(eigen_vec.size());
-  for (vcl_size_t i = 0; i<entries.size(); ++i)
-    entries[i] = eigen_vec(i);
-  viennacl::fast_copy(entries.begin(), entries.end(), gpu_vec.begin());
+  viennacl::fast_copy(eigen_vec.data(), eigen_vec.data() + eigen_vec.size(), gpu_vec.begin());
 }
 
-template<unsigned int AlignmentV>
-void copy(Eigen::VectorXd const & eigen_vec,
-          vector<double, AlignmentV> & gpu_vec)
+template<typename NumericT, int EigenMapTypeV, typename EigenStrideT, unsigned int AlignmentV>
+void copy(Eigen::Map<Eigen::Matrix<NumericT, Eigen::Dynamic, 1>, EigenMapTypeV, EigenStrideT> const & eigen_vec,
+          vector<NumericT, AlignmentV> & gpu_vec)
 {
-  std::vector<double> entries(eigen_vec.size());
-  for (vcl_size_t i = 0; i<entries.size(); ++i)
-    entries[i] = eigen_vec(i);
-  viennacl::fast_copy(entries.begin(), entries.end(), gpu_vec.begin());
+  viennacl::fast_copy(eigen_vec.data(), eigen_vec.data() + eigen_vec.size(), gpu_vec.begin());
 }
 #endif
 
@@ -3201,6 +3210,20 @@ namespace detail
       lhs -= temp;
     }
   };
+
+
+
+  //////////// Generic user-provided routines //////////////
+
+  template<typename T, typename UserMatrixT>
+  struct op_executor<vector_base<T>, op_assign, vector_expression<const UserMatrixT, const vector_base<T>, op_prod> >
+  {
+    static void apply(vector_base<T> & lhs, vector_expression<const UserMatrixT, const vector_base<T>, op_prod> const & rhs)
+    {
+      rhs.lhs().apply(rhs.rhs(), lhs);
+    }
+  };
+
 
 } // namespace detail
 } // namespace linalg

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -39,10 +39,6 @@
 #include "viennacl/linalg/matrix_operations.hpp"
 #include "viennacl/linalg/norm_2.hpp"
 #include "viennacl/linalg/prod.hpp"
-
-
-// Some helper functions for this tutorial:
-#include "Random.hpp"
 
 
 /** <h2>Defining a Compute Kernel</h2>
@@ -135,9 +131,9 @@ int main()
   * For more details on the three lines, see tutorial 'custom-kernels'
   **/
   std::cout << "Using existing kernel within ViennaCL:" << std::endl;
-  elementwise_multiplication<<<128, 128>>>(viennacl::linalg::cuda::detail::cuda_arg<NumericType>(vcl_vec1),
-                                           viennacl::linalg::cuda::detail::cuda_arg<NumericType>(vcl_vec2),
-                                           viennacl::linalg::cuda::detail::cuda_arg<NumericType>(vcl_result),
+  elementwise_multiplication<<<128, 128>>>(viennacl::cuda_arg(vcl_vec1),
+                                           viennacl::cuda_arg(vcl_vec2),
+                                           viennacl::cuda_arg(vcl_result),
                                            N);
 
   std::cout << "vec1  : " << vcl_vec1 << std::endl;

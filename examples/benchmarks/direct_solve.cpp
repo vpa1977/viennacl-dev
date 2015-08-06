@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -30,28 +30,38 @@
 #include "viennacl/linalg/prod.hpp"
 #include "viennacl/linalg/norm_2.hpp"
 #include "viennacl/linalg/direct_solve.hpp"
-#include "examples/tutorial/Random.hpp"
-
-#include "benchmark-utils.hpp"
+#include "viennacl/tools/random.hpp"
+#include "viennacl/tools/timer.hpp"
 
 #define BENCHMARK_RUNS 10
+
+
+inline void printOps(double num_ops, double exec_time)
+{
+  std::cout << "GFLOPs: " << num_ops / (1000000 * exec_time * 1000) << std::endl;
+}
+
 
 template<typename NumericT>
 void fill_matrix(viennacl::matrix<NumericT> & mat)
 {
+  viennacl::tools::uniform_random_numbers<NumericT> randomNumber;
+
   for (std::size_t i = 0; i < mat.size1(); ++i)
   {
     for (std::size_t j = 0; j < mat.size2(); ++j)
-      mat(i, j) = static_cast<NumericT>(-0.5) * random<NumericT>();
-    mat(i, i) = NumericT(1.0) + NumericT(2.0) * random<NumericT>(); //some extra weight on diagonal for stability
+      mat(i, j) = static_cast<NumericT>(-0.5) * randomNumber();
+    mat(i, i) = NumericT(1.0) + NumericT(2.0) * randomNumber(); //some extra weight on diagonal for stability
   }
 }
 
 template<typename NumericT>
 void fill_vector(viennacl::vector<NumericT> & vec)
 {
+  viennacl::tools::uniform_random_numbers<NumericT> randomNumber;
+
   for (std::size_t i = 0; i < vec.size(); ++i)
-    vec(i) = NumericT(1.0) + NumericT(2.0) * random<NumericT>(); //some extra weight on diagonal for stability
+    vec(i) = NumericT(1.0) + NumericT(2.0) * randomNumber(); //some extra weight on diagonal for stability
 }
 
 template<typename NumericT,typename MatrixT1, typename MatrixT2,typename MatrixT3, typename SolverTag>
@@ -60,7 +70,7 @@ void run_solver_matrix(MatrixT1 const & matrix1, MatrixT2 const & matrix2,Matrix
   std::cout << "------- Solver tag: " <<SolverTag::name()<<" ----------" << std::endl;
   result = viennacl::linalg::solve(matrix1, matrix2, SolverTag());
 
-  Timer timer;
+  viennacl::tools::timer timer;
   viennacl::backend::finish();
 
   timer.start();
@@ -81,7 +91,7 @@ void run_solver_vector(MatrixT const & matrix, VectorT2 const & vector2,VectorT 
   std::cout << "------- Solver tag: " <<SolverTag::name()<<" ----------" << std::endl;
   result = viennacl::linalg::solve(matrix, vector2, SolverTag());
 
-  Timer timer;
+  viennacl::tools::timer timer;
   viennacl::backend::finish();
 
   timer.start();

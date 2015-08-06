@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_BISECT_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -63,6 +63,9 @@ namespace detail
 
 /**
 *   @brief Implementation of the bisect-algorithm for the calculation of the eigenvalues of a tridiagonal matrix. Experimental - interface might change.
+*
+*   Refer to "Calculation of the Eigenvalues of a Symmetric Tridiagonal Matrix by the Method of Bisection" in the Handbook Series Linear Algebra, contributed by Barth, Martin, and Wilkinson.
+*   http://www.maths.ed.ac.uk/~aar/papers/bamawi.pdf
 *
 *   @param alphas       Elements of the main diagonal
 *   @param betas        Elements of the secondary diagonal

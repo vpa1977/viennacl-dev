@@ -2,7 +2,7 @@
 #define VIENNACL_META_RESULT_OF_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -173,6 +173,12 @@ struct size_type<arma::SpMat<NumericT> > { typedef vcl_size_t  type; };
 #ifdef VIENNACL_WITH_EIGEN
 template<class T, int a, int b, int c, int d, int e>
 struct size_type< Eigen::Matrix<T, a, b, c, d, e> >
+{
+  typedef vcl_size_t   type;
+};
+
+template<class T, int a, int b, int c, int d, int e>
+struct size_type< Eigen::Map<Eigen::Matrix<T, a, b, c, d, e> > >
 {
   typedef vcl_size_t   type;
 };

@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_CUDA_FFT_OPERATIONS_HPP_
 
 /* =========================================================================
-  Copyright (c) 2010-2014, Institute for Microelectronics,
+  Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -30,6 +30,7 @@
 #include "viennacl/tools/tools.hpp"
 #include "viennacl/linalg/cuda/common.hpp"
 #include "viennacl/linalg/host_based/vector_operations.hpp"
+#include "viennacl/linalg/host_based/fft_operations.hpp"
 
 namespace viennacl
 {
@@ -201,8 +202,8 @@ void direct(viennacl::vector<NumericT, AlignmentV> const & in,
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  fft_direct<<<128,128>>>(reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(in)),
-                          reinterpret_cast<      numeric2_type *>(detail::cuda_arg<NumericT>(out)),
+  fft_direct<<<128,128>>>(reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(in)),
+                          reinterpret_cast<      numeric2_type *>(viennacl::cuda_arg(out)),
                           static_cast<unsigned int>(size),
                           static_cast<unsigned int>(stride),
                           static_cast<unsigned int>(batch_num),
@@ -226,8 +227,8 @@ void direct(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> const & 
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  fft_direct<<<128,128>>>(reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(in)),
-                          reinterpret_cast<      numeric2_type *>(detail::cuda_arg<NumericT>(out)),
+  fft_direct<<<128,128>>>(reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(in)),
+                          reinterpret_cast<      numeric2_type *>(viennacl::cuda_arg(out)),
                           static_cast<unsigned int>(size),
                           static_cast<unsigned int>(stride),
                           static_cast<unsigned int>(batch_num),
@@ -284,7 +285,7 @@ void reorder(viennacl::vector<NumericT, AlignmentV> & in,
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+  fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                            static_cast<unsigned int>(bits_datasize),
                            static_cast<unsigned int>(size),
                            static_cast<unsigned int>(stride),
@@ -448,7 +449,7 @@ void radix2(viennacl::vector<NumericT, AlignmentV> & in,
 
   if (size <= viennacl::linalg::cuda::detail::fft::MAX_LOCAL_POINTS_NUM)
   {
-    fft_radix2_local<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+    fft_radix2_local<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                                   static_cast<unsigned int>(bit_size),
                                   static_cast<unsigned int>(size),
                                   static_cast<unsigned int>(stride),
@@ -459,7 +460,7 @@ void radix2(viennacl::vector<NumericT, AlignmentV> & in,
   }
   else
   {
-    fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+    fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                              static_cast<unsigned int>(bit_size),
                              static_cast<unsigned int>(size),
                              static_cast<unsigned int>(stride),
@@ -469,7 +470,7 @@ void radix2(viennacl::vector<NumericT, AlignmentV> & in,
 
     for (vcl_size_t step = 0; step < bit_size; step++)
     {
-      fft_radix2<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+      fft_radix2<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                               static_cast<unsigned int>(step),
                               static_cast<unsigned int>(bit_size),
                               static_cast<unsigned int>(size),
@@ -500,7 +501,7 @@ void radix2(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV>& in,
 
   if (size <= viennacl::linalg::cuda::detail::fft::MAX_LOCAL_POINTS_NUM)
   {
-    fft_radix2_local<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+    fft_radix2_local<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                                   static_cast<unsigned int>(bit_size),
                                   static_cast<unsigned int>(size),
                                   static_cast<unsigned int>(stride),
@@ -511,7 +512,7 @@ void radix2(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV>& in,
   }
   else
   {
-    fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+    fft_reorder<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                              static_cast<unsigned int>(bit_size),
                              static_cast<unsigned int>(size),
                              static_cast<unsigned int>(stride),
@@ -520,7 +521,7 @@ void radix2(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV>& in,
     VIENNACL_CUDA_LAST_ERROR_CHECK("fft_reorder");
     for (vcl_size_t step = 0; step < bit_size; step++)
     {
-      fft_radix2<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
+      fft_radix2<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
                               static_cast<unsigned int>(step),
                               static_cast<unsigned int>(bit_size),
                               static_cast<unsigned int>(size),
@@ -630,14 +631,14 @@ void bluestein(viennacl::vector<NumericT, AlignmentV> & in,
   viennacl::vector<NumericT, AlignmentV> B(ext_size << 1);
   viennacl::vector<NumericT, AlignmentV> Z(ext_size << 1);
 
-  zero2<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(A)),
-                     reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(B)),
+  zero2<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(A)),
+                     reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(B)),
                      static_cast<unsigned int>(ext_size));
   VIENNACL_CUDA_LAST_ERROR_CHECK("zero2");
 
-  bluestein_pre<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(in)),
-                             reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(A)),
-                             reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(B)),
+  bluestein_pre<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(in)),
+                             reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(A)),
+                             reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(B)),
                              static_cast<unsigned int>(size),
                              static_cast<unsigned int>(ext_size),
                              NumericT(1));
@@ -645,8 +646,8 @@ void bluestein(viennacl::vector<NumericT, AlignmentV> & in,
 
   viennacl::linalg::convolve_i(A, B, Z);
 
-  bluestein_post<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(Z)),
-                              reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(out)),
+  bluestein_post<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(Z)),
+                              reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(out)),
                               static_cast<unsigned int>(size),
                               NumericT(1));
   VIENNACL_CUDA_LAST_ERROR_CHECK("bluestein_post");
@@ -678,9 +679,9 @@ void multiply_complex(viennacl::vector<NumericT, AlignmentV> const & input1,
 
   vcl_size_t size = input1.size() / 2;
 
-  fft_mult_vec<<<128,128>>>(reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(input1)),
-                            reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(input2)),
-                            reinterpret_cast<      numeric2_type *>(detail::cuda_arg<NumericT>(output)),
+  fft_mult_vec<<<128,128>>>(reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(input1)),
+                            reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(input2)),
+                            reinterpret_cast<      numeric2_type *>(viennacl::cuda_arg(output)),
                             static_cast<unsigned int>(size));
   VIENNACL_CUDA_LAST_ERROR_CHECK("fft_mult_vec");
 }
@@ -702,7 +703,7 @@ void normalize(viennacl::vector<NumericT, AlignmentV> & input)
 
   vcl_size_t size = input.size() >> 1;
   NumericT norm_factor = static_cast<NumericT>(size);
-  fft_div_vec_scalar<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(input)),
+  fft_div_vec_scalar<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(input)),
                                   static_cast<unsigned int>(size),
                                   norm_factor);
   VIENNACL_CUDA_LAST_ERROR_CHECK("fft_div_vec_scalar");
@@ -733,8 +734,8 @@ void transpose(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> const
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  transpose<<<128,128>>>(reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(input)),
-                         reinterpret_cast<      numeric2_type *>(detail::cuda_arg<NumericT>(output)),
+  transpose<<<128,128>>>(reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(input)),
+                         reinterpret_cast<      numeric2_type *>(viennacl::cuda_arg(output)),
                          static_cast<unsigned int>(input.internal_size1()>>1),
                          static_cast<unsigned int>(input.internal_size2()>>1));
   VIENNACL_CUDA_LAST_ERROR_CHECK("transpose");
@@ -770,7 +771,7 @@ void transpose(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> & inp
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  transpose_inplace<<<128,128>>>(reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(input)),
+  transpose_inplace<<<128,128>>>(reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(input)),
                                  static_cast<unsigned int>(input.internal_size1()>>1),
                                  static_cast<unsigned int>(input.internal_size2() >> 1));
   VIENNACL_CUDA_LAST_ERROR_CHECK("transpose_inplace");
@@ -798,8 +799,8 @@ void real_to_complex(viennacl::vector_base<NumericT> const & in,
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  real_to_complex<<<128,128>>>(detail::cuda_arg<NumericT>(in),
-                               reinterpret_cast<numeric2_type *>(detail::cuda_arg<NumericT>(out)),
+  real_to_complex<<<128,128>>>(viennacl::cuda_arg(in),
+                               reinterpret_cast<numeric2_type *>(viennacl::cuda_arg(out)),
                                static_cast<unsigned int>(size));
   VIENNACL_CUDA_LAST_ERROR_CHECK("real_to_complex");
 }
@@ -820,8 +821,8 @@ void complex_to_real(viennacl::vector_base<NumericT> const & in,
 {
   typedef typename viennacl::linalg::cuda::detail::type_to_type2<NumericT>::type  numeric2_type;
 
-  complex_to_real<<<128,128>>>(reinterpret_cast<const numeric2_type *>(detail::cuda_arg<NumericT>(in)),
-                               detail::cuda_arg<NumericT>(out),
+  complex_to_real<<<128,128>>>(reinterpret_cast<const numeric2_type *>(viennacl::cuda_arg(in)),
+                               viennacl::cuda_arg(out),
                                static_cast<unsigned int>(size));
   VIENNACL_CUDA_LAST_ERROR_CHECK("complex_to_real");
 
@@ -846,7 +847,7 @@ template<typename NumericT>
 void reverse(viennacl::vector_base<NumericT>& in)
 {
   vcl_size_t size = in.size();
-  reverse_inplace<<<128,128>>>(detail::cuda_arg<NumericT>(in), static_cast<unsigned int>(size));
+  reverse_inplace<<<128,128>>>(viennacl::cuda_arg(in), static_cast<unsigned int>(size));
   VIENNACL_CUDA_LAST_ERROR_CHECK("reverse_inplace");
 }
 

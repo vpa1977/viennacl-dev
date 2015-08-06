@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -41,9 +41,7 @@
 
 
 // Helper functions for this tutorial:
-#include "Random.hpp"
 #include "vector-io.hpp"
-#include "../benchmarks/benchmark-utils.hpp"
 
 /**
 *   The following is a set of auxiliary dispatchers for obtaining the right Eigen types for a given floating point type.
@@ -121,6 +119,7 @@ void run_tutorial()
   eigen_densemat(2,1) = -1.0;  eigen_densemat(2,2) = -1.0;  eigen_densemat(2,3) = -1.0;
   eigen_densemat(3,2) = -1.0;  eigen_densemat(3,3) =  2.0;  eigen_densemat(3,4) = -1.0;
                                eigen_densemat(5,4) = -1.0;  eigen_densemat(4,4) = -1.0;
+  Eigen::Map<EigenMatrix> eigen_densemat_map(eigen_densemat.data(), 6, 5); // same as eigen_densemat, but emulating user-provided buffer
 
   /**
   * Create and fill sparse matrices from the Eigen library:
@@ -139,6 +138,7 @@ void run_tutorial()
   * Create and fill a few vectors from the Eigen library:
   **/
   EigenVector eigen_rhs(5);
+  Eigen::Map<EigenVector> eigen_rhs_map(eigen_rhs.data(), 5);
   EigenVector eigen_result(6);
   EigenVector eigen_temp(6);
 
@@ -161,10 +161,12 @@ void run_tutorial()
   /**
   * Directly copy the Eigen objects to ViennaCL objects
   **/
-  viennacl::copy(&(eigen_rhs[0]), &(eigen_rhs[0]) + 5, vcl_rhs.begin());  //method 1: via iterator interface (cf. std::copy())
-  viennacl::copy(eigen_rhs, vcl_rhs);  //method 2: via built-in wrappers (convenience layer)
+  viennacl::copy(&(eigen_rhs[0]), &(eigen_rhs[0]) + 5, vcl_rhs.begin());  // Method 1: via iterator interface (cf. std::copy())
+  viennacl::copy(eigen_rhs, vcl_rhs);                                     // Method 2: via built-in wrappers (convenience layer)
+  viennacl::copy(eigen_rhs_map, vcl_rhs);                                 // Same as method 2, but for a mapped vector
 
   viennacl::copy(eigen_densemat, vcl_densemat);
+  viennacl::copy(eigen_densemat_map, vcl_densemat); //same as above, using mapped matrix
   viennacl::copy(eigen_sparsemat, vcl_sparsemat);
   std::cout << "VCL sparsematrix dimensions: " << vcl_sparsemat.size1() << ", " << vcl_sparsemat.size2() << std::endl;
 

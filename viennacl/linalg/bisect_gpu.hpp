@@ -2,7 +2,7 @@
 #define VIENNACL_LINALG_BISECT_GPU
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -56,16 +56,16 @@ namespace linalg
 ///
 //! overloaded function template: std::vectors as parameters
 template<typename NumericT>
-bool bisect(std::vector<NumericT> const & diagonal, std::vector<NumericT> const & superdiagonal, std::vector<NumericT> & eigenvalues)
+bool
+bisect(const std::vector<NumericT> & diagonal, const std::vector<NumericT> & superdiagonal, std::vector<NumericT> & eigenvalues)
 {
   assert(diagonal.size() == superdiagonal.size() &&
          diagonal.size() == eigenvalues.size()   &&
          bool("Input vectors do not have the same sizes!"));
   bool bResult = false;
-
   // flag if the matrix size is due to explicit user request
   // desired precision of eigenvalues
-  NumericT  precision = NumericT(0.00001);
+  NumericT  precision = static_cast<NumericT>(0.00001);
   const unsigned int mat_size = static_cast<unsigned int>(diagonal.size());
 
   // set up input
@@ -118,7 +118,8 @@ bool bisect(std::vector<NumericT> const & diagonal, std::vector<NumericT> const 
 ///
 //! overloaded function template: viennacl::vectors as parameters
 template<typename NumericT>
-bool bisect(viennacl::vector<NumericT> const & diagonal, viennacl::vector<NumericT> const & superdiagonal, viennacl::vector<NumericT> & eigenvalues)
+bool
+bisect(const viennacl::vector<NumericT> & diagonal, const viennacl::vector<NumericT> & superdiagonal, viennacl::vector<NumericT> & eigenvalues)
 {
   assert(diagonal.size() == superdiagonal.size() &&
          diagonal.size() == eigenvalues.size()   &&
@@ -126,8 +127,8 @@ bool bisect(viennacl::vector<NumericT> const & diagonal, viennacl::vector<Numeri
   bool bResult = false;
   // flag if the matrix size is due to explicit user request
   // desired precision of eigenvalues
-  NumericT  precision = 0.00001;
-  const unsigned int mat_size = diagonal.size();
+  NumericT  precision = static_cast<NumericT>(0.00001);
+  const unsigned int mat_size = static_cast<unsigned int>(diagonal.size());
 
   // set up input
   viennacl::linalg::detail::InputData<NumericT> input(diagonal, superdiagonal, mat_size);

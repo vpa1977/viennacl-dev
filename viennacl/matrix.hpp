@@ -2,7 +2,7 @@
 #define VIENNACL_MATRIX_HPP_
 
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -13,7 +13,7 @@
 
    Project Head:    Karl Rupp                   rupp@iue.tuwien.ac.at
 
-   (A list of authors and contributors can be found in the PDF manual)
+   (A list of authors and contributors can be found in the manual)
 
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
@@ -223,8 +223,27 @@ matrix_base<NumericT, SizeT, DistanceT>::matrix_base(cl_mem mem, viennacl::conte
 }
 #endif
 
+// Copy CTOR
 template<class NumericT, typename SizeT, typename DistanceT>
 matrix_base<NumericT, SizeT, DistanceT>::matrix_base(const matrix_base<NumericT, SizeT, DistanceT> & other) :
+  size1_(other.size1()), size2_(other.size2()), start1_(0), start2_(0), stride1_(1), stride2_(1),
+  internal_size1_(viennacl::tools::align_to_multiple<size_type>(size1_, dense_padding_size)),
+  internal_size2_(viennacl::tools::align_to_multiple<size_type>(size2_, dense_padding_size)),
+  row_major_fixed_(true), row_major_(other.row_major())
+{
+  elements_.switch_active_handle_id(viennacl::traits::active_handle_id(other));
+  if (internal_size() > 0)
+  {
+    viennacl::backend::memory_create(elements_, sizeof(NumericT)*internal_size(), viennacl::traits::context(other));
+    clear();
+    self_type::operator=(other);
+  }
+}
+
+// Conversion CTOR
+template<typename NumericT, typename SizeT, typename DistanceT>
+template<typename OtherNumericT>
+matrix_base<NumericT, SizeT, DistanceT>::matrix_base(const matrix_base<OtherNumericT, SizeT, DistanceT> & other) :
   size1_(other.size1()), size2_(other.size2()), start1_(0), start2_(0), stride1_(1), stride2_(1),
   internal_size1_(viennacl::tools::align_to_multiple<size_type>(size1_, dense_padding_size)),
   internal_size2_(viennacl::tools::align_to_multiple<size_type>(size2_, dense_padding_size)),
@@ -256,6 +275,24 @@ matrix_base<NumericT, SizeT, DistanceT> & matrix_base<NumericT, SizeT, DistanceT
 
   viennacl::linalg::am(*this,
                        other, cpu_value_type(1.0), 1, false, false);
+  return *this;
+}
+
+// Conversion assignment
+template<class NumericT, typename SizeT, typename DistanceT>
+template<typename OtherNumericT>
+matrix_base<NumericT, SizeT, DistanceT> & matrix_base<NumericT, SizeT, DistanceT>::operator=(const matrix_base<OtherNumericT, SizeT, DistanceT> & other)
+{
+  if (internal_size() == 0)
+  {
+    if (other.internal_size() == 0)
+      return *this;
+    if (!row_major_fixed_)
+      row_major_ = other.row_major();
+    resize(other.size1(), other.size2(), false);
+  }
+
+  viennacl::linalg::convert(*this, other);
   return *this;
 }
 
@@ -756,6 +793,16 @@ public:
 
   using base_type::operator=;
 
+  // the following are needed for Visual Studio:
+  template<typename OtherNumericT, typename F2>
+  base_type & operator=(viennacl::matrix<OtherNumericT, F2> const & B)                          { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F2>
+  base_type & operator=(viennacl::matrix_range<viennacl::matrix<OtherNumericT, F2> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
+  template<typename OtherNumericT, typename F2>
+  base_type & operator=(viennacl::matrix_slice<viennacl::matrix<OtherNumericT, F2> > const & B) { return base_type::operator=(static_cast<viennacl::matrix_base<OtherNumericT> const &>(B)); }
+
   /** @brief Resizes the matrix.
     *   Existing entries can optionally be preserved
     *
@@ -1001,76 +1048,62 @@ void copy(arma::Mat<NumericT>                       const & arma_matrix,
 #endif
 
 #ifdef VIENNACL_WITH_EIGEN
-/** @brief Copies a dense Eigen matrix from the host (CPU) to the OpenCL device (GPU or multi-core CPU)
-*
-* @param cpu_matrix   A dense MTL matrix. cpu_matrix(i, j) returns the element in the i-th row and j-th columns (both starting with zero)
-* @param gpu_matrix   A dense ViennaCL matrix
-*/
-template<typename F, unsigned int AlignmentV>
-void copy(const Eigen::MatrixXf & cpu_matrix,
-          matrix<float, F, AlignmentV> & gpu_matrix)
+namespace detail
 {
-  typedef typename matrix<float, F, AlignmentV>::size_type      size_type;
-
-  if (gpu_matrix.size1() == 0 || gpu_matrix.size2() == 0)
+  template<typename EigenMatrixTypeT, typename NumericT, typename F, unsigned int AlignmentV>
+  void copy_from_eigen_matrix(EigenMatrixTypeT const & cpu_matrix,
+                              viennacl::matrix<NumericT, F, AlignmentV> & gpu_matrix)
   {
-    gpu_matrix.resize(cpu_matrix.rows(),
-                      cpu_matrix.cols(),
-                      false);
-  }
-  else
-  {
-    assert( (gpu_matrix.size1() == static_cast<vcl_size_t>(cpu_matrix.rows()))
-            && (gpu_matrix.size2() == static_cast<vcl_size_t>(cpu_matrix.cols()))
-            && bool("matrix size mismatch")
-            );
+    typedef typename viennacl::matrix<NumericT, F, AlignmentV>::size_type      size_type;
+
+    if (gpu_matrix.size1() == 0 || gpu_matrix.size2() == 0)
+    {
+      gpu_matrix.resize(cpu_matrix.rows(),
+                        cpu_matrix.cols(),
+                        false);
+    }
+    else
+    {
+      assert(    (gpu_matrix.size1() == static_cast<vcl_size_t>(cpu_matrix.rows()))
+              && (gpu_matrix.size2() == static_cast<vcl_size_t>(cpu_matrix.cols()))
+              && bool("matrix size mismatch")
+              );
+    }
+
+    std::vector<NumericT> data(gpu_matrix.internal_size());
+    for (size_type i = 0; i < gpu_matrix.size1(); ++i)
+    {
+      for (size_type j = 0; j < gpu_matrix.size2(); ++j)
+        data[F::mem_index(i, j, gpu_matrix.internal_size1(), gpu_matrix.internal_size2())] = cpu_matrix(i,j);
+    }
+
+    viennacl::backend::memory_write(gpu_matrix.handle(), 0, sizeof(NumericT) * data.size(), &(data[0]));
   }
 
-  std::vector<float> data(gpu_matrix.internal_size());
-  for (size_type i = 0; i < gpu_matrix.size1(); ++i)
-  {
-    for (size_type j = 0; j < gpu_matrix.size2(); ++j)
-      data[F::mem_index(i, j, gpu_matrix.internal_size1(), gpu_matrix.internal_size2())] = cpu_matrix(i,j);
-  }
-
-  viennacl::backend::memory_write(gpu_matrix.handle(), 0, sizeof(float) * data.size(), &(data[0]));
-  //gpu_matrix.elements_ = viennacl::ocl::current_context().create_memory(CL_MEM_READ_WRITE, data);
 }
 
-/** @brief Copies a dense Eigen matrix from the host (CPU) to the OpenCL device (GPU or multi-core CPU)
+/** @brief Copies a dense Eigen matrix from the host (CPU) to a ViennaCL matrix (host, CUDA, or OpenCL)
 *
 * @param cpu_matrix   A dense MTL matrix. cpu_matrix(i, j) returns the element in the i-th row and j-th columns (both starting with zero)
-* @param gpu_matrix   A dense ViennaCL matrix
+* @param vcl_matrix   A dense ViennaCL matrix
 */
-template<typename F, unsigned int AlignmentV>
-void copy(const Eigen::MatrixXd & cpu_matrix,
-          matrix<double, F, AlignmentV> & gpu_matrix)
+template<typename NumericT, int EigenOptions, typename F, unsigned int AlignmentV>
+void copy(Eigen::Matrix<NumericT, Eigen::Dynamic, Eigen::Dynamic, EigenOptions> const & cpu_matrix,
+          viennacl::matrix<NumericT, F, AlignmentV> & vcl_matrix)
 {
-  typedef typename matrix<double, F, AlignmentV>::size_type      size_type;
+  detail::copy_from_eigen_matrix(cpu_matrix, vcl_matrix);
+}
 
-  if (gpu_matrix.size1() == 0 || gpu_matrix.size2() == 0)
-  {
-    gpu_matrix.resize(cpu_matrix.rows(),
-                      cpu_matrix.cols(),
-                      false);
-  }
-  else
-  {
-    assert( (gpu_matrix.size1() == static_cast<vcl_size_t>(cpu_matrix.rows()))
-            && (gpu_matrix.size2() == static_cast<vcl_size_t>(cpu_matrix.cols()))
-            && bool("matrix size mismatch")
-            );
-  }
-
-  std::vector<double> data(gpu_matrix.internal_size());
-  for (size_type i = 0; i < gpu_matrix.size1(); ++i)
-  {
-    for (size_type j = 0; j < gpu_matrix.size2(); ++j)
-      data[F::mem_index(i, j, gpu_matrix.internal_size1(), gpu_matrix.internal_size2())] = cpu_matrix(i,j);
-  }
-
-  viennacl::backend::memory_write(gpu_matrix.handle(), 0, sizeof(double) * data.size(), &(data[0]));
-  //gpu_matrix.elements_ = viennacl::ocl::current_context().create_memory(CL_MEM_READ_WRITE, data);
+/** @brief Copies a dense Eigen matrix from the host (CPU) to a ViennaCL matrix (host, CUDA, or OpenCL)
+*
+* @param cpu_matrix   A dense MTL matrix. cpu_matrix(i, j) returns the element in the i-th row and j-th columns (both starting with zero)
+* @param vcl_matrix   A dense ViennaCL matrix
+*/
+template<typename NumericT, int EigenOptions, int EigenMatTypeV, typename EigenStrideT, typename F, unsigned int AlignmentV>
+void copy(Eigen::Map<Eigen::Matrix<NumericT, Eigen::Dynamic, Eigen::Dynamic, EigenOptions>, EigenMatTypeV, EigenStrideT> const & cpu_matrix,
+          viennacl::matrix<NumericT, F, AlignmentV> & vcl_matrix)
+{
+  detail::copy_from_eigen_matrix(cpu_matrix, vcl_matrix);
 }
 #endif
 
@@ -2845,6 +2878,46 @@ namespace detail
     }
   };
 
+  //////////////////// row_sum(), column_sum() operations ////////////////////////////////////////
+
+  template<typename T>
+  struct op_executor<vector_base<T>, op_assign, vector_expression<const matrix_base<T>, const matrix_base<T>, op_row_sum> >
+  {
+    static void apply(vector_base<T> & lhs, vector_expression<const matrix_base<T>, const matrix_base<T>, op_row_sum> const & proxy)
+    {
+      viennacl::linalg::row_sum_impl(proxy.lhs(), lhs);
+    }
+  };
+
+  template<typename T, typename LHS, typename RHS, typename OP>
+  struct op_executor<vector_base<T>, op_assign, vector_expression<const matrix_expression<LHS, RHS, OP>, const matrix_expression<LHS, RHS, OP>, op_row_sum> >
+  {
+    static void apply(vector_base<T> & lhs, vector_expression<const matrix_expression<LHS, RHS, OP>, const matrix_expression<LHS, RHS, OP>, op_row_sum> const & proxy)
+    {
+      matrix_base<T> tmp(proxy.lhs());
+      viennacl::linalg::row_sum_impl(tmp, lhs);
+    }
+  };
+
+  template<typename T>
+  struct op_executor<vector_base<T>, op_assign, vector_expression<const matrix_base<T>, const matrix_base<T>, op_col_sum> >
+  {
+    static void apply(vector_base<T> & lhs, vector_expression<const matrix_base<T>, const matrix_base<T>, op_col_sum> const & proxy)
+    {
+      viennacl::linalg::column_sum_impl(proxy.lhs(), lhs);
+    }
+  };
+
+
+  template<typename T, typename LHS, typename RHS, typename OP>
+  struct op_executor<vector_base<T>, op_assign, vector_expression<const matrix_expression<LHS, RHS, OP>, const matrix_expression<LHS, RHS, OP>, op_col_sum> >
+  {
+    static void apply(vector_base<T> & lhs, vector_expression<const matrix_expression<LHS, RHS, OP>, const matrix_expression<LHS, RHS, OP>, op_col_sum> const & proxy)
+    {
+      matrix_base<T> tmp(proxy.lhs());
+      viennacl::linalg::column_sum_impl(tmp, lhs);
+    }
+  };
 
   //////////////////// Element-wise operations ////////////////////////////////////////
 
@@ -3086,6 +3159,27 @@ namespace detail
     }
   };
 
+  // C = A * EXPR   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_assign,
+                     matrix_expression<const matrix_base<T>,
+                                       const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_base<T>,
+                                        const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.rhs());
+      viennacl::linalg::prod_impl(rhs.lhs(), temp, lhs, T(1.0), T(0));
+    }
+  };
+
+
+
   // C = A^T * B
   template<typename T>
   struct op_executor<matrix_base<T>, op_assign, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3106,6 +3200,26 @@ namespace detail
     }
   };
 
+  // C = EXPR * B   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_assign,
+                     matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const matrix_base<T>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const matrix_base<T>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.lhs());
+      viennacl::linalg::prod_impl(temp, rhs.rhs(), lhs, T(1.0), T(0));
+    }
+  };
+
+
   // C = A^T * B^T
   template<typename T>
   struct op_executor<matrix_base<T>, op_assign, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3125,6 +3239,30 @@ namespace detail
         viennacl::linalg::prod_impl(rhs.lhs(), rhs.rhs(), lhs, T(1.0), T(0));
     }
   };
+
+  // C = EXPR1 * EXPR2   for some matrix expressions EXPR1 and EXPR2
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<matrix_base<T>,
+                     op_assign,
+                     matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp1(rhs.lhs());
+      matrix_base<T> temp2(rhs.rhs());
+      viennacl::linalg::prod_impl(temp1, temp2, lhs, T(1.0), T(0));
+    }
+  };
+
+
 
 
   // C += A * B
@@ -3163,6 +3301,26 @@ namespace detail
     }
   };
 
+  // C += A * EXPR   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_add,
+                     matrix_expression<const matrix_base<T>,
+                                       const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_base<T>,
+                                        const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.rhs());
+      viennacl::linalg::prod_impl(rhs.lhs(), temp, lhs, T(1.0), T(1.0));
+    }
+  };
+
+
   // C += A^T * B
   template<typename T>
   struct op_executor<matrix_base<T>, op_inplace_add, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3183,6 +3341,26 @@ namespace detail
     }
   };
 
+  // C += EXPR * B   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_add,
+                     matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const matrix_base<T>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const matrix_base<T>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.lhs());
+      viennacl::linalg::prod_impl(temp, rhs.rhs(), lhs, T(1.0), T(1.0));
+    }
+  };
+
+
   // C += A^T * B^T
   template<typename T>
   struct op_executor<matrix_base<T>, op_inplace_add, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3202,6 +3380,30 @@ namespace detail
         viennacl::linalg::prod_impl(rhs.lhs(), rhs.rhs(), lhs, T(1.0), T(1.0));
     }
   };
+
+
+  // C += EXPR1 * EXPR2   for some matrix expressions EXPR1 and EXPR2
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_add,
+                     matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp1(rhs.lhs());
+      matrix_base<T> temp2(rhs.rhs());
+      viennacl::linalg::prod_impl(temp1, temp2, lhs, T(1.0), T(1.0));
+    }
+  };
+
 
 
   // C -= A * B
@@ -3240,6 +3442,26 @@ namespace detail
     }
   };
 
+  // C -= A * EXPR   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_sub,
+                     matrix_expression<const matrix_base<T>,
+                                       const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_base<T>,
+                                        const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.rhs());
+      viennacl::linalg::prod_impl(rhs.lhs(), temp, lhs, T(-1.0), T(1.0));
+    }
+  };
+
+
   // C -= A^T * B
   template<typename T>
   struct op_executor<matrix_base<T>, op_inplace_sub, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3260,6 +3482,26 @@ namespace detail
     }
   };
 
+  // C += EXPR * B   for some matrix expression EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_sub,
+                     matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const matrix_base<T>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const matrix_base<T>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.lhs());
+      viennacl::linalg::prod_impl(temp, rhs.rhs(), lhs, T(-1.0), T(1.0));
+    }
+  };
+
+
   // C -= A^T * B^T
   template<typename T>
   struct op_executor<matrix_base<T>, op_inplace_sub, matrix_expression<const matrix_expression<const matrix_base<T>, const matrix_base<T>, op_trans>,
@@ -3277,6 +3519,28 @@ namespace detail
       }
       else
         viennacl::linalg::prod_impl(rhs.lhs(), rhs.rhs(), lhs, T(-1.0), T(1.0));
+    }
+  };
+
+  // C -= EXPR1 * EXPR2   for some matrix expressions EXPR1 and EXPR2
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<matrix_base<T>,
+                     op_inplace_sub,
+                     matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_mat_mat_prod>
+                    >
+  {
+    static void apply(matrix_base<T> & lhs,
+                      matrix_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const matrix_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_mat_mat_prod> const & rhs)
+    {
+      matrix_base<T> temp1(rhs.lhs());
+      matrix_base<T> temp2(rhs.rhs());
+      viennacl::linalg::prod_impl(temp1, temp2, lhs, T(-1.0), T(1.0));
     }
   };
 
@@ -3320,6 +3584,67 @@ namespace detail
     }
   };
 
+  // y = MAT_EXPR * x   for a matrix expression MAT_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_assign,
+                     vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const vector_base<T>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const vector_base<T>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> temp(rhs.lhs());
+      viennacl::linalg::prod_impl(temp, rhs.rhs(), lhs);
+    }
+  };
+
+  // y = A * VEC_EXPR   for a vector expression VEC_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_assign,
+                     vector_expression<const matrix_base<T>,
+                                       const vector_expression<const LhsT, const RhsT, OpT>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_base<T>,
+                                        const vector_expression<const LhsT, const RhsT, OpT>,
+                                        op_prod> const & rhs)
+    {
+      vector_base<T> x(rhs.rhs());
+      viennacl::linalg::prod_impl(rhs.lhs(), x, lhs);
+    }
+  };
+
+  // y = MAT_EXPR * VEC_EXPR   for a matrix expression MAT_EXPR and a vector expression VEC_EXPR
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<vector_base<T>,
+                     op_assign,
+                     vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> A(rhs.lhs());
+      vector_base<T> x(rhs.rhs());
+      viennacl::linalg::prod_impl(A, x, lhs);
+    }
+  };
+
+
 
   // y += A * x
   template<typename T>
@@ -3347,6 +3672,73 @@ namespace detail
     }
   };
 
+  // y += MAT_EXPR * x   for a matrix expression MAT_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_inplace_add,
+                     vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const vector_base<T>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const vector_base<T>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> A(rhs.lhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(A, rhs.rhs(), y);
+      lhs += y;
+    }
+  };
+
+  // y += A * VEC_EXPR   for a vector expression VEC_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_inplace_add,
+                     vector_expression<const matrix_base<T>,
+                                       const vector_expression<const LhsT, const RhsT, OpT>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_base<T>,
+                                        const vector_expression<const LhsT, const RhsT, OpT>,
+                                        op_prod> const & rhs)
+    {
+      vector_base<T> x(rhs.rhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(rhs.lhs(), x, y);
+      lhs += y;
+    }
+  };
+
+  // y += MAT_EXPR * VEC_EXPR   for a matrix expression MAT_EXPR and a vector expression VEC_EXPR
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<vector_base<T>,
+                     op_inplace_add,
+                     vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> A(rhs.lhs());
+      vector_base<T> x(rhs.rhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(A, x, y);
+      lhs += y;
+    }
+  };
+
+
 
   // y -= A * x
   template<typename T>
@@ -3371,6 +3763,72 @@ namespace detail
     {
       vector_base<T> temp(rhs);
       lhs -= temp;
+    }
+  };
+
+  // y -= MAT_EXPR * x   for a matrix expression MAT_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_inplace_sub,
+                     vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                       const vector_base<T>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT, const RhsT, OpT>,
+                                        const vector_base<T>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> A(rhs.lhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(A, rhs.rhs(), y);
+      lhs -= y;
+    }
+  };
+
+  // y -= A * VEC_EXPR   for a vector expression VEC_EXPR
+  template<typename T, typename LhsT, typename RhsT, typename OpT>
+  struct op_executor<vector_base<T>,
+                     op_inplace_sub,
+                     vector_expression<const matrix_base<T>,
+                                       const vector_expression<const LhsT, const RhsT, OpT>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_base<T>,
+                                        const vector_expression<const LhsT, const RhsT, OpT>,
+                                        op_prod> const & rhs)
+    {
+      vector_base<T> x(rhs.rhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(rhs.lhs(), x, y);
+      lhs -= y;
+    }
+  };
+
+  // y -= MAT_EXPR * VEC_EXPR   for a matrix expression MAT_EXPR and a vector expression VEC_EXPR
+  template<typename T,
+           typename LhsT1, typename RhsT1, typename OpT1,
+           typename LhsT2, typename RhsT2, typename OpT2>
+  struct op_executor<vector_base<T>,
+                     op_inplace_sub,
+                     vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                       const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                       op_prod>
+                    >
+  {
+    static void apply(vector_base<T> & lhs,
+                      vector_expression<const matrix_expression<const LhsT1, const RhsT1, OpT1>,
+                                        const vector_expression<const LhsT2, const RhsT2, OpT2>,
+                                        op_prod> const & rhs)
+    {
+      matrix_base<T> A(rhs.lhs());
+      vector_base<T> x(rhs.rhs());
+      vector_base<T> y(lhs);
+      viennacl::linalg::prod_impl(A, x, y);
+      lhs -= y;
     }
   };
 

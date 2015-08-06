@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -36,7 +36,7 @@
 #include "viennacl/compressed_matrix.hpp"
 #include "viennacl/linalg/prod.hpp"
 
-#include "examples/tutorial/Random.hpp"
+#include "viennacl/tools/random.hpp"
 
 //
 // -------------------------------------------------------------
@@ -133,6 +133,8 @@ int test(Epsilon const& epsilon)
 {
   int retval = EXIT_SUCCESS;
 
+  viennacl::tools::uniform_random_numbers<NumericT> randomNumber;
+
   std::size_t N = 210;
   std::size_t K = 300;
   std::size_t M = 420;
@@ -144,11 +146,11 @@ int test(Epsilon const& epsilon)
 
   for (std::size_t i=0; i<stl_A.size(); ++i)
     for (std::size_t j=0; j<nnz_row; ++j)
-      stl_A[i][static_cast<unsigned int>(random<double>() * double(K))] = NumericT(1.0) + random<NumericT>();
+      stl_A[i][static_cast<unsigned int>(randomNumber() * NumericT(K))] = NumericT(1.0) + NumericT();
 
   for (std::size_t i=0; i<stl_B.size(); ++i)
     for (std::size_t j=0; j<nnz_row; ++j)
-      stl_B[i][static_cast<unsigned int>(random<double>() * double(M))] = NumericT(1.0) + random<NumericT>();
+      stl_B[i][static_cast<unsigned int>(randomNumber() * NumericT(M))] = NumericT(1.0) + NumericT();
 
 
   viennacl::compressed_matrix<NumericT>  vcl_A(N, K);
@@ -169,11 +171,26 @@ int test(Epsilon const& epsilon)
 
   if ( std::fabs(diff(stl_C, vcl_C)) > epsilon )
   {
-    std::cout << "# Error at operation: matrix-matrix product with compressed_matrix" << std::endl;
+    std::cout << "# Error at operation: matrix-matrix product with compressed_matrix (vcl_C)" << std::endl;
     std::cout << "  diff: " << std::fabs(diff(stl_C, vcl_C)) << std::endl;
     retval = EXIT_FAILURE;
   }
 
+  viennacl::compressed_matrix<NumericT> vcl_D = viennacl::linalg::prod(vcl_A, vcl_B);
+  if ( std::fabs(diff(stl_C, vcl_D)) > epsilon )
+  {
+    std::cout << "# Error at operation: matrix-matrix product with compressed_matrix (vcl_D)" << std::endl;
+    std::cout << "  diff: " << std::fabs(diff(stl_C, vcl_C)) << std::endl;
+    retval = EXIT_FAILURE;
+  }
+
+  viennacl::compressed_matrix<NumericT> vcl_E(viennacl::linalg::prod(vcl_A, vcl_B));
+  if ( std::fabs(diff(stl_C, vcl_E)) > epsilon )
+  {
+    std::cout << "# Error at operation: matrix-matrix product with compressed_matrix (vcl_E)" << std::endl;
+    std::cout << "  diff: " << std::fabs(diff(stl_C, vcl_C)) << std::endl;
+    retval = EXIT_FAILURE;
+  }
 
   // --------------------------------------------------------------------------
   return retval;

@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -27,7 +27,7 @@
 // Some helper functions for this tutorial:
 #include "viennacl.hpp"
 
-#include "examples/tutorial/Random.hpp"
+#include "viennacl/tools/random.hpp"
 
 
 #include "viennacl/vector.hpp"
@@ -225,20 +225,20 @@ void test_blas(ViennaCLBackend my_backend,
                     order_A, trans_A, order_B, trans_B, order_C,
                     C_size1, C_size2, size_k,
                     1.0f,
-                    viennacl::linalg::cuda::detail::cuda_arg<float>(cuda_A_float), A_start1, A_start2, A_stride1, A_stride2, (order_A == ViennaCLRowMajor) ? A_columns : A_rows,
-                    viennacl::linalg::cuda::detail::cuda_arg<float>(cuda_B_float), B_start1, B_start2, B_stride1, B_stride2, (order_B == ViennaCLRowMajor) ? B_columns : B_rows,
+                    viennacl::cuda_arg(cuda_A_float), A_start1, A_start2, A_stride1, A_stride2, (order_A == ViennaCLRowMajor) ? A_columns : A_rows,
+                    viennacl::cuda_arg(cuda_B_float), B_start1, B_start2, B_stride1, B_stride2, (order_B == ViennaCLRowMajor) ? B_columns : B_rows,
                     0.0f,
-                    viennacl::linalg::cuda::detail::cuda_arg<float>(cuda_C_float), C_start1, C_start2, C_stride1, C_stride2, (order_C == ViennaCLRowMajor) ? C_columns : C_rows);
+                    viennacl::cuda_arg(cuda_C_float), C_start1, C_start2, C_stride1, C_stride2, (order_C == ViennaCLRowMajor) ? C_columns : C_rows);
   check(C_float, cuda_C_float, eps_float);
 
   ViennaCLCUDADgemm(my_backend,
                     order_A, trans_A, order_B, trans_B, order_C,
                     C_size1, C_size2, size_k,
                     1.0,
-                    viennacl::linalg::cuda::detail::cuda_arg<double>(cuda_A_double), A_start1, A_start2, A_stride1, A_stride2, (order_A == ViennaCLRowMajor) ? A_columns : A_rows,
-                    viennacl::linalg::cuda::detail::cuda_arg<double>(cuda_B_double), B_start1, B_start2, B_stride1, B_stride2, (order_B == ViennaCLRowMajor) ? B_columns : B_rows,
+                    viennacl::cuda_arg(cuda_A_double), A_start1, A_start2, A_stride1, A_stride2, (order_A == ViennaCLRowMajor) ? A_columns : A_rows,
+                    viennacl::cuda_arg(cuda_B_double), B_start1, B_start2, B_stride1, B_stride2, (order_B == ViennaCLRowMajor) ? B_columns : B_rows,
                     0.0,
-                    viennacl::linalg::cuda::detail::cuda_arg<double>(cuda_C_double), C_start1, C_start2, C_stride1, C_stride2, (order_C == ViennaCLRowMajor) ? C_columns : C_rows);
+                    viennacl::cuda_arg(cuda_C_double), C_start1, C_start2, C_stride1, C_stride2, (order_C == ViennaCLRowMajor) ? C_columns : C_rows);
   check(C_double, cuda_C_double, eps_double);
 #endif
 
@@ -535,6 +535,9 @@ void test_blas(ViennaCLBackend my_backend,
 
 int main()
 {
+  viennacl::tools::uniform_random_numbers<float>  randomFloat;
+  viennacl::tools::uniform_random_numbers<double> randomDouble;
+
   std::size_t size  = 500*500;
   float  eps_float  = 1e-5f;
   double eps_double = 1e-12;
@@ -551,13 +554,13 @@ int main()
 
   for (std::size_t i = 0; i < size; ++i)
   {
-    C_float[i] = 0.5f + 0.1f * random<float>();
-    A_float[i] = 0.5f + 0.1f * random<float>();
-    B_float[i] = 0.5f + 0.1f * random<float>();
+    C_float[i] = 0.5f + 0.1f * randomFloat();
+    A_float[i] = 0.5f + 0.1f * randomFloat();
+    B_float[i] = 0.5f + 0.1f * randomFloat();
 
-    C_double[i] = 0.5 + 0.2 * random<double>();
-    A_double[i] = 0.5 + 0.2 * random<double>();
-    B_double[i] = 0.5 + 0.2 * random<double>();
+    C_double[i] = 0.5 + 0.2 * randomDouble();
+    A_double[i] = 0.5 + 0.2 * randomDouble();
+    B_double[i] = 0.5 + 0.2 * randomDouble();
   }
 
 

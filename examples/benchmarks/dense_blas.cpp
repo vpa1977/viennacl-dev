@@ -1,5 +1,5 @@
 /* =========================================================================
-   Copyright (c) 2010-2014, Institute for Microelectronics,
+   Copyright (c) 2010-2015, Institute for Microelectronics,
                             Institute for Analysis and Scientific Computing,
                             TU Wien.
    Portions of this software are copyright by UChicago Argonne, LLC.
@@ -15,8 +15,6 @@
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
 
-#include "benchmark-utils.hpp"
-
 #include "viennacl/matrix.hpp"
 #include "viennacl/matrix_proxy.hpp"
 #include "viennacl/vector.hpp"
@@ -25,6 +23,7 @@
 #include "viennacl/linalg/inner_prod.hpp"
 #include "viennacl/linalg/prod.hpp"
 #include "viennacl/linalg/lu.hpp"
+#include "viennacl/tools/timer.hpp"
 
 #include <iomanip>
 #include <stdlib.h>
@@ -56,7 +55,7 @@ void bench(size_t BLAS1_N, size_t BLAS2_M, size_t BLAS2_N, size_t BLAS3_M, size_
   using viennacl::linalg::lu_factorize;
   using viennacl::trans;
 
-  Timer timer;
+  viennacl::tools::timer timer;
   double time_previous, time_spent;
   size_t Nruns;
   double time_per_benchmark = 1;
@@ -105,8 +104,8 @@ void bench(size_t BLAS1_N, size_t BLAS2_M, size_t BLAS2_N, size_t BLAS3_M, size_
     init_random(x);
     init_random(y);
 
-    BENCHMARK_OP(y = prod(A, x),        "GEMV-N", std::setprecision(3) << double((BLAS3_M + BLAS3_N + BLAS3_M*BLAS3_N)*sizeof(T))/time_spent * 1e-9, "GB/s")
-    BENCHMARK_OP(x = prod(trans(A), y), "GEMV-T", std::setprecision(3) << double((BLAS3_M + BLAS3_N + BLAS3_M*BLAS3_N)*sizeof(T))/time_spent * 1e-9, "GB/s")
+    BENCHMARK_OP(y = prod(A, x),        "GEMV-N", std::setprecision(3) << double((BLAS2_M + BLAS2_N + BLAS2_M*BLAS2_N)*sizeof(T))/time_spent * 1e-9, "GB/s")
+    BENCHMARK_OP(x = prod(trans(A), y), "GEMV-T", std::setprecision(3) << double((BLAS2_M + BLAS2_N + BLAS2_M*BLAS2_N)*sizeof(T))/time_spent * 1e-9, "GB/s")
   }
 
   //BLAS3

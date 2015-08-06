@@ -3,83 +3,16 @@
 
 /**
 
-   \page manual-additional-algorithms    Additional Algorithms
+   \page manual-additional-algorithms    Additional Algorithms (Unstable)
 
 
 The implementations of the algorithms described in this chapter are still not yet mature enough to be considered core-functionality, and/or are available with the OpenCL backend only.
 
 \warning The implementations of the algorithms described in this chapter are not considered mature yet.
 
-\section manual-additional-algorithms-iterative-solvers Additional Iterative Solvers
-The following iterative solvers are only available on selected computing backends.
-
-\subsection manual-additional-algorithms-iterative-solvers-mixed-cg Mixed-Precision Conjugate Gradients
-A two-stage mixed-precision CG algorithm is available as follows:
-\code
-viennacl::linalg::mixed_precision_cg_tag   mixed_prec_cg_config;
-vcl_result = viennacl::linalg::solve(vcl_matrix,
-                                     vcl_rhs,
-                                     mixed_prec_cg_config);
-\endcode
-As usual, the first parameter to the constructor of `mixed_precision_cg_tag` is the relative tolerance for the residual, while the second parameter denotes the maximum number of solver iterations.
-The third parameter denotes the relative tolerance for the inner low-precision CG iterations and defaults to `0.01`.
-
-\note Have a look at `examples/banchmarks/solver.cpp` for an example.
-
-\note A mixed-precision solver makes sense only if the matrix and right-hand-side vector are supplied in `double` precision.
-
-\note The mixed-precision solver is currently available with the OpenCL compute backend only.
-
 \section manual-additional-algorithms-preconditioners Additional Preconditioners
 In addition to the \ref manual-algorithms-preconditioners "Preconditioners available in the ViennaCL core", two more preconditioners are available with the OpenCL backend and are described in the following.
 
-\subsection manual-additional-algorithms-preconditioners-amg Algebraic Multigrid
-
-\note Algebraic Multigrid preconditioners are only available with the OpenCL backend and are still experimental in ViennaCL. Interface changes as well as considerable performance improvements may be included in future releases!
-
-\note Algebraic Multigrid preconditioners depend on Boost.uBLAS.
-
-Algebraic multigrid mimics the behavior of geometric multigrid on the algebraic level and is thus suited for black-box purposes, where only the system matrix and the right hand side vector are available \cite trottenberg:multigrid .
-Many different flavors of the individual multigrid ingredients exist \cite yang:parallel-amg, of which the most common ones are implemented in ViennaCL.
-
-The two main ingredients of algebraic multigrid are a coarsening algorithm and an interpolation algorithm.
-The available coarsening methods are:
-
-<center>
-<table>
-<tr><th>Description                     </th><th> ViennaCL option constant </th></tr>
-<tr><td>Classical Ruge-St&uuml;ben (RS) </td><td> `VIENNACL_AMG_COARSE_RS` </td></tr>
-<tr><td>One-Pass                        </td><td> `VIENNACL_AMG_COARSE_ONEPASS` </td></tr>
-<tr><td>RS0                             </td><td> `VIENNACL_AMG_COARSE_RS0` </td></tr>
-<tr><td>RS3                             </td><td> `VIENNACL_AMG_COARSE_RS3` </td></tr>
-<tr><td>Aggregation                     </td><td> `VIENNACL_AMG_COARSE_AG` </td></tr>
-<tr><td>Smoothed aggregation            </td><td> `VIENNACL_AMG_COARSE_SA` </td></tr>
-</table>
-<b>AMG coarsening methods available in ViennaCL. Per default, classical RS coarsening is used. </b>
-</center>
-
-The available interpolation methods are:
-<center>
-<table>
-<tr><th>Description    </th><th> ViennaCL option constant </th></tr>
-<tr><td>Direct         </td><td> `VIENNACL_AMG_INTERPOL_DIRECT` </td></tr>
-<tr><td>Classic        </td><td> `VIENNACL_AMG_INTERPOL_ONEPASS` </td></tr>
-<tr><td>RS0 coarsening </td><td> `VIENNACL_AMG_INTERPOL_RS0` </td></tr>
-<tr><td>RS3 coarsening </td><td> `VIENNACL_AMG_INTERPOL_RS3` </td></tr>
-</table>
-<b>AMG interpolation methods available in ViennaCL. Per default, direct interpolation is used.</b>
-</center>
-
-In addition, the following parameters can be controlled in the `amg_tag` and can be passed to the constructor:
-  - Strength of dependence threshold (default: `0.25`)
-  - Interpolation weight (default: `1`)
-  - Jacobi smoother weight (default: `1`)
-  - Number of pre-smoothing steps (default: `1`)
-  - Number of post-smoothing steps (default: `1`)
-  - Number of coarse levels
-
-
-\note Note that the efficiency of the various AMG flavors are typically highly problem-specific. Therefore, failure of one method for a particular problem does NOT imply that other coarsening or interpolation strategies will fail as well.
 
 \subsection manual-additional-algorithms-preconditioners-spai Sparse Approximate Inverses
 
@@ -138,6 +71,72 @@ Our experience is that FSPAI is typically more efficient than SPAI when applied 
 
 Note that FSPAI depends on the ordering of the unknowns, thus bandwidth reduction algorithms may be employed first, cf. \ref manual-additional-algorithms-bandwidth-reduction "Bandwidth Reduction".
 
+
+\section manual-additional-algorithms-eigenvalues Additional Eigenvalue Routines
+Several routines for computing the eigenvalues of symmetric tridiagonal as well as dense matrices are provided with ViennaCL.
+The following routines are available for one or two compute backends, hence they are not considered to be part of the core.
+Also, use the implementations with care: Even though the routines pass the respective tests, they are not as extensively tested as core functionality.
+
+\subsection manual-additional-algorithms-eigenvalues-bisection Symmetric Tridiagonal Matrices: Bisection
+The bisection method for finding the eigenvalues of a symmetric tridiagonal matrix has been implemented within the CUDA SDK as an example.
+ViennaCL provides an extension of the implementation also suitable for eigenvalues with multiplicity higher than one.
+In addition, our implementation is not limited to CUDA and also available for OpenCL.
+
+The interface in ViennaCL takes STL vectors as inputs, holding the diagonal and the sub/superdiagonal.
+The third argument is the vector to be overwritten with the computed eigenvalues.
+A sample code snippet is as follows:
+\code
+std::vector<NumericT> diagonal(mat_size);
+std::vector<NumericT> superdiagonal(mat_size);
+std::vector<NumericT> eigenvalues_bisect(mat_size);
+
+bool bResult = viennacl::linalg::bisect(diagonal, superdiagonal, eigenvalues_bisect);
+\endcode
+The return value `bResult` is `false` if an error occurred, and `true` otherwise.
+Note that the sub/superdiagonal array `superdiagonal` is required to have an value of zero at index zero (indicating an element outside the matrix).
+
+\note A fully working example is available in  `examples/tutorial/bisect.cpp`.
+
+\subsection manual-additional-algorithms-eigenvalues-tql2 Symmetric Tridiagonal Matrices: TQL2
+The bisection method allows for a fast computation of eigenvalues, but it does not compute eigenvectors directly.
+If eigenvectors are needed, the tql2-version of the QL algorithm as described in the Algol procedures can be used.
+
+The interface to the routine `tql2()` is as follows: The first argument is a dense ViennaCL matrix.
+The second and third argument are STL vectors representing the diagonal and the sub/superdiagonal, respectively.
+Thus, a minimal code example for a 20-by-20 tridiagonal matrix is as follows:
+\code
+  std::size_t N = 20;
+  std::vector<NumericT> d(N), e(N);
+  viennacl::matrix<NumericT> Q = viennacl::identity_matrix<NumericT>(N);
+
+  // fill d and e with data here
+
+  viennacl::linalg::tql2(Q, d, e);
+\endcode
+Note that the sub/superdiagonal array `e` is required to have an value of zero at index zero (indicating an element outside the matrix).
+
+\note A fully working example is available in  `examples/tutorial/tql2.cpp`.
+
+\subsection manual-additional-algorithms-eigenvalues-qr-method-symmetric QR Method for Symmetric Dense Matrices
+Symmetric dense real-valued matrices have real-valued eigenvalues, hence the current lack of complex arithmetic in ViennaCL is not limiting.
+An implementation of the QR method for the symmetric case for computing eigenvalues and eigenvectors is provided.
+
+The current implementation of the QR method for symmetric dense matrices in ViennaCL takes three parameters:
+  -  The input matrix to find eigenvalues and eigenvectors from
+  -  A matrix in which the calculated eigenvectors will be stored
+  -  An STL vector in which the calculated eigenvalues will be stored
+
+A minimal example is as follows:
+\code
+  std::size_t N = 20;
+  viennacl::matrix<ScalarType> A_input(N,N);
+  viennacl::matrix<ScalarType> Q(N, N);
+  std::vector<ScalarType> eigenvalues(N);
+
+  viennacl::linalg::qr_method_sym(A_input, Q, eigenvalues);
+\endcode
+
+\note A fully working example is available in  `examples/tutorial/qr_method.cpp`.
 
 \section manual-additional-algorithms-fft Fast Fourier Transform
 
@@ -221,6 +220,34 @@ To reverse a vector `v` inplace, use
  viennacl::linalg::reverse(v);
 \endcode
 
+\section manual-additional-algorithms-svd Singular Value Decomposition
+The singular decomposition of a real-valued matrix \f$ A \in \mathbb{R}^{M \times N} \f$ is a decomposition of the form
+\f[
+ A = U \Sigma V^T
+\f]
+where \f$ U \in \mathbb{R}^{M\times M} \f$ is a unitary matrix holding the left-singular vectors, \f$ \Sigma \in \mathbb{R}^{M \times N} \f$ holds the singular values of \f$ A \f$ on the diagonal, and \f$ V \in \mathbb{R}^{N \times N} \f$ holds the right-singular vectors of \f$ A \f$.
+The singular vectors are stored column-wise in both \f$ U \f$ and \f$ V \f$.
+
+ViennaCL provides an implementation of the SVD method based on bidiagonalization and QR methods with shift.
+The API of the `svd()` routine takes three parameters:
+  - The input matrix \f$ A \f$, which gets overwritten with \f$ \Sigma \f$,
+  - The matrix \f$ U \f$ for the left-singular vectors,
+  - The matrix \f$ V \f$ for the right-singular vectors.
+
+A minimal example is as follows:
+\code
+  std::size_t M = 20;
+  std::size_t N = 30;
+  viennacl::matrix<NumericT> A(M, N), U(M, M), V(N, N);
+
+  // fill A with values here
+
+  viennacl::linalg::svd(A, U, V);
+\endcode
+
+\note Have a look at `tests/src/svd.cpp` for an example.
+
+\note There are known performance bottlenecks in the current implementation. Any contributions welcome!
 
 \section manual-additional-algorithms-bandwidth-reduction Bandwidth Reduction
 
