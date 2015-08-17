@@ -142,7 +142,7 @@ namespace viennacl
 						"			int end = rows[ id +1];     "
 						"           ndrange_t range = ndrange_1D(end - start); "
 						"           enqueue_kernel(get_default_queue() , "
-						"           CLK_ENQUEUE_FLAGS_WAIT_KERNEL, range,^{update_row_weights(output,elements, columns, factors[id],start); });  "
+						"           CLK_ENQUEUE_FLAGS_KERNEL_NO_WAIT, range,^{update_row_weights(output,elements, columns, factors[id],start); });  "
 						"       }             "
 						"    }"
 						"}\n";
