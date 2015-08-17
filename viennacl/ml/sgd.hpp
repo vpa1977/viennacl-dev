@@ -12,7 +12,6 @@
 #include <viennacl/matrix.hpp>
 #include <viennacl/vector.hpp>
 #include <viennacl/scalar.hpp>
-#include <viennacl/linalg/reduce.hpp>
 #include <viennacl/linalg/vector_operations.hpp>
 #include <viennacl/linalg/matrix_operations.hpp>
 #include <viennacl/linalg/inner_prod.hpp>
@@ -132,7 +131,7 @@ public:
 
 	void update_weights_cpu(bool nominal,const std::vector<double>& class_values,const viennacl::scalar<double>& prod_result, const viennacl::vector<double>& row_values, int row) {
 		double y;
-		double z;
+		viennacl::vector<double> z(0,viennacl::traits::context(prod_result));
 		if (nominal) {
 			y = class_values.at(row) ? 1 : -1;
 			z = y * (prod_result + bias_);
@@ -239,7 +238,7 @@ public:
 		HINGE, LOGLOSS, SQUAREDLOSS
 	};
 	sgd_template(size_t len, size_t batch_size, LossFunction loss, viennacl::context& ctx, double learning_rate, double lambda, bool nominal = true ) :
-			loss_(loss), context_(ctx), weights_(len, ctx), factors_(batch_size, ctx), prod_result_(batch_size, ctx) {
+		loss_(loss), context_(ctx), weights_(len, ctx), factors_(batch_size, ctx), prod_result_(batch_size, ctx), sum_(0, ctx), bias_(0, ctx), all_ones_(viennacl::scalar_vector<double>(batch_size, 1, ctx)) {
 		learning_rate_ = learning_rate;
 		lambda_ = lambda;
 		nominal_ = nominal;
@@ -403,8 +402,8 @@ public:
 		compute_factors_cpu(class_values, prod_result,factors_, nominal,loss_, learning_rate_, bias_);
 		//std::cout << "factor " << factors_ << " learning rate " << learning_rate_ << " bias "<< bias_ << std::endl;
 		sgd_update_weights<sgd_matrix_type>(weights_, batch, factors_);
-		double sum = sgd_reduce<double>(factors_);
-		bias_ += sum;
+		viennacl::linalg::inner_prod_impl(factors_, all_ones_, sum_);
+		bias_ += sum_;
 	}
 
 #ifdef VIENNACL_WITH_OPENCL
@@ -444,9 +443,8 @@ public:
 		}*/
 
 		sgd_update_weights<sgd_matrix_type>(weights_, batch, factors_);
-		 
-		double sum = sgd_reduce<double>(factors_);
-		bias_ += sum;
+		viennacl::linalg::inner_prod_impl(factors_, all_ones_, sum_);
+		bias_ += sum_;
 	}
 
 #endif
@@ -496,7 +494,9 @@ private:
 	viennacl::vector<double> prod_result_;
 	double learning_rate_;
 	double lambda_;
-	double bias_;
+	viennacl::scalar<double> bias_;
+	viennacl::scalar<double> sum_;
+	viennacl::vector<double> all_ones_; ;
 	bool nominal_;
 	size_t instance_size_;
 
