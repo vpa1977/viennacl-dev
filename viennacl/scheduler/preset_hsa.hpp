@@ -70,7 +70,7 @@ scheduler::statement avbv(scheduler::operation_node_type ASSIGN_OP, NumericT con
 template<typename NumericT, typename ScalarT1>
 scheduler::statement av(scheduler::operation_node_type ASSIGN_OP, NumericT const * x, NumericT const * y, ScalarT1 const * a, bool flip_a, bool reciprocal_a)
 {
-  return scheduler::preset::avbv(ASSIGN_OP, x, y, a, flip_a, reciprocal_a, (NumericT const*)NULL, (ScalarT1 const*)NULL, false, false);
+  return scheduler::preset_hsa::avbv(ASSIGN_OP, x, y, a, flip_a, reciprocal_a, (NumericT const*)NULL, (ScalarT1 const*)NULL, false, false);
 }
 
 
@@ -212,26 +212,26 @@ scheduler::statement reduction_inner_prod(ScalarT const * s, vector_base<Numeric
 template<class ScalarT, typename NumericT>
 statement inner_prod(ScalarT const * s, vector_base<NumericT> const * x, vector_base<NumericT> const * y)
 {
-  return preset::reduction_inner_prod(s,x,y, OPERATION_INVALID_TYPE, false, false);
+  return preset_hsa::reduction_inner_prod(s,x,y, OPERATION_INVALID_TYPE, false, false);
 }
 
 template<typename NumericT>
 statement norm_1(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
-  return preset::reduction_inner_prod(s,x, (vector_base<NumericT>*)NULL, OPERATION_BINARY_ADD_TYPE, false, true);
+  return preset_hsa::reduction_inner_prod(s,x, (vector_base<NumericT>*)NULL, OPERATION_BINARY_ADD_TYPE, false, true);
 }
 
 template<typename NumericT>
 statement norm_2(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
-  return  preset::reduction_inner_prod(s, x, x, OPERATION_INVALID_TYPE, true, false);
+  return  preset_hsa::reduction_inner_prod(s, x, x, OPERATION_INVALID_TYPE, true, false);
 }
 
 template<typename NumericT>
 statement norm_inf(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
   bool is_float_or_double = is_floating_point<NumericT>::value;
-  return preset::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMAX_TYPE :
+  return preset_hsa::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMAX_TYPE :
                                                                                                OPERATION_BINARY_ELEMENT_MAX_TYPE, false, true);
 }
 
@@ -239,28 +239,28 @@ template<typename NumericT>
 statement index_norm_inf(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
   bool is_float_or_double = is_floating_point<NumericT>::value; //avoid compiler warnings about unreachable code below
-  return preset::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_ARGFMAX_TYPE :
+  return preset_hsa::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_ARGFMAX_TYPE :
                                                                                                OPERATION_BINARY_ELEMENT_ARGMAX_TYPE, false, true);
 }
 
 template<typename NumericT>
 statement sum(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
-  return preset::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, OPERATION_BINARY_ADD_TYPE, false, false);
+  return preset_hsa::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, OPERATION_BINARY_ADD_TYPE, false, false);
 }
 
 template<typename NumericT>
 statement max(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
   bool is_float_or_double = is_floating_point<NumericT>::value; //avoid compiler warnings about unreachable code below
-  return preset::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMAX_TYPE : OPERATION_BINARY_ELEMENT_MAX_TYPE, false, false);
+  return preset_hsa::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMAX_TYPE : OPERATION_BINARY_ELEMENT_MAX_TYPE, false, false);
 }
 
 template<typename NumericT>
 statement min(scalar<NumericT> const * s, vector_base<NumericT> const * x)
 {
   bool is_float_or_double = is_floating_point<NumericT>::value; //avoid compiler warnings about unreachable code below
-  return preset::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMIN_TYPE : OPERATION_BINARY_ELEMENT_MIN_TYPE, false, false);
+  return preset_hsa::reduction_inner_prod(s, x, (vector_base<NumericT>*)NULL, is_float_or_double ? OPERATION_BINARY_ELEMENT_FMIN_TYPE : OPERATION_BINARY_ELEMENT_MIN_TYPE, false, false);
 }
 
 

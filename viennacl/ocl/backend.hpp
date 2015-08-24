@@ -26,6 +26,11 @@
 #include "viennacl/ocl/context.hpp"
 #include "viennacl/ocl/enqueue.hpp"
 
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/hsa/backend.hpp"
+#endif
+
+
 namespace viennacl
 {
 namespace ocl

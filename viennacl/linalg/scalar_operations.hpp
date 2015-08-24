@@ -36,6 +36,11 @@
   #include "viennacl/linalg/opencl/scalar_operations.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/scalar_operations.hpp"
+#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/scalar_operations.hpp"
 #endif
@@ -129,6 +134,14 @@ namespace viennacl
                                          s3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+          case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::asbs(s1,
+                                         s2, alpha, len_alpha, reciprocal_alpha, flip_sign_alpha,
+                                         s3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
+          break;
+#endif
+
 #ifdef VIENNACL_WITH_CUDA
         case viennacl::CUDA_MEMORY:
           viennacl::linalg::cuda::asbs(s1,
@@ -136,6 +149,8 @@ namespace viennacl
                                        s3,  beta, len_beta,  reciprocal_beta,  flip_sign_beta);
           break;
 #endif
+
+
         case viennacl::MEMORY_NOT_INITIALIZED:
           throw memory_exception("not initialised!");
         default:

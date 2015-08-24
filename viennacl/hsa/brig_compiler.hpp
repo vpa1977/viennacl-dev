@@ -54,7 +54,36 @@ namespace viennacl
 
 			std::vector<char> compile_brig(const std::string& content, const char* program_name = NULL)
 			{
-				char buffer[L_tmpnam];
+                            char buffer[L_tmpnam];
+                            strcpy(buffer,"baseXXXXXX");
+                            mktemp(buffer);
+
+                            std::string name(buffer);
+                            name+= ".cl";
+                            FILE* tmp = fopen(name.c_str(), "wb+");
+                            fwrite(content.c_str(), content.size(), 1, tmp);
+                            fclose(tmp);
+                            std::string command(CLOC_COMPILER);
+                            //command += " ";
+                            //command += CLOC_HLC;
+                            command += " ";
+                            command += name;
+                            system(command.c_str());
+
+                            name = buffer;
+                            name += ".brig";
+
+                            tmp = fopen(name.c_str(), "rb");
+                            fseek(tmp,0,SEEK_END);
+                            std::vector<char> binary;
+                            binary.resize(ftell(tmp));
+                            rewind(tmp);
+                            fread(&binary[0], binary.size(), 1, tmp);
+                            fclose(tmp);
+                            remove(name.c_str());
+                            return binary;
+                            
+/*				char buffer[L_tmpnam];
 				strcpy(buffer,"baseXXXXXX");
 				mktemp(buffer);
 
@@ -118,7 +147,7 @@ namespace viennacl
 				fread(&binary[0], binary.size(), 1, tmp);
 				fclose(tmp);
 				remove(name.c_str());
-				return binary;
+				return binary;*/
 			}
 
 			char* CLOC_COMPILER;

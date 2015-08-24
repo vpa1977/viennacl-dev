@@ -81,7 +81,7 @@ void prod_impl(const viennacl::compressed_matrix<NumericT, AlignmentV> & A,
                const viennacl::vector_base<NumericT> & x,
                      viennacl::vector_base<NumericT> & y)
 {
-  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(viennacl::traits::hsa_handle(A).context());
+  viennacl::hsa::context & ctx = viennacl::traits::hsa_context(A);
   viennacl::linalg::hsa::kernels::compressed_matrix<NumericT>::init(ctx);
   std::stringstream ss;
   ss << "vec_mul";

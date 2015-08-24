@@ -191,7 +191,7 @@ public:
     *  @param ptr    Optional pointer to CPU memory, with which the OpenCL memory should be initialized
     *  @return       A plain OpenCL handle. Either assign it to a viennacl::hsa::handle<cl_mem> directly, or make sure that you free to memory manually if you no longer need the allocated memory.
     */
-  hsa_registered_pointer create_memory_without_smart_handle(unsigned int size, void * ptr = NULL) const
+ /* hsa_registered_pointer create_memory_without_smart_handle(unsigned int size, void * ptr = NULL) const
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Creating memory of size " << size << " for context " << h_ << " (unsafe, returning cl_mem directly)" << std::endl;
@@ -203,7 +203,7 @@ public:
     hsa_registered_pointer hsa_ptr(new_ptr,size);
     hsa_ptr.prepare();
     return hsa_ptr;
-  }
+  }*/
 
 
   /** @brief Creates a memory buffer within the context
@@ -212,6 +212,7 @@ public:
     *  @param size   Size of the memory buffer in bytes
     *  @param ptr    Optional pointer to CPU memory, with which the OpenCL memory should be initialized
     */
+  /*
   viennacl::hsa::handle<hsa_registered_pointer> create_memory(cl_mem_flags flags, unsigned int size, void * ptr = NULL) const
   {
     return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(size, ptr), *this);
@@ -221,18 +222,18 @@ public:
   {
     return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(size, ptr), *this);
   }
-
+*/
 
   /** @brief Creates a memory buffer within the context initialized from the supplied data
     *
     *  @param flags  OpenCL flags for the buffer creation
     *  @param buffer A vector (STL vector, ublas vector, etc.)
     */
-  template< typename NumericT, typename A, template<typename, typename> class VectorType >
+ /* template< typename NumericT, typename A, template<typename, typename> class VectorType >
   viennacl::hsa::handle<hsa_registered_pointer> create_memory(cl_mem_flags flags, const VectorType<NumericT, A> & buffer) const
   {
     return viennacl::hsa::handle<hsa_registered_pointer>(create_memory_without_smart_handle(static_cast<cl_uint>(sizeof(NumericT) * buffer.size()), (void*)&buffer[0]), *this);
-  }
+  }*/
 
   //////////////////// create queues ////////////////////////////////
 
@@ -763,16 +764,24 @@ private:
 /** @brief Returns the kernel with the provided name */
 inline viennacl::hsa::kernel & viennacl::hsa::program::get_kernel(std::string const & name)
 {
+  std::string candidate = "&__OpenCL_"+name+"_kernel";
   //std::cout << "Requiring kernel " << name << " from program " << name_ << std::endl;
   for (kernel_container_type::iterator it = kernels_.begin();
        it != kernels_.end();
        ++it)
   {
-    if (((*it)->name() == name) || ((*it)->name() == "&__OpenCL_"+name+"_kernel"))
+      std::string local_name = (*it)->name();
+    if (!strcmp(local_name.c_str(), name.c_str()) || !strcmp(local_name.c_str(), candidate.c_str()))
       return **it;
   }
   std::cerr << "ViennaCL: FATAL ERROR: Could not find kernel '" << name << "' from program '" << name_ << "'" << std::endl;
   std::cout << "Number of kernels in program: " << kernels_.size() << std::endl;
+  for (kernel_container_type::iterator it = kernels_.begin();
+       it != kernels_.end();
+       ++it)
+  {
+   std::cout << "Candidate: "   << (*it)->name() << std::endl;
+  }
   throw "Kernel not found";
   //return kernels_[0];  //return a defined object
 }

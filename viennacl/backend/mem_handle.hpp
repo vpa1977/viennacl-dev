@@ -58,7 +58,7 @@ namespace detail
 #ifdef VIENNACL_WITH_CUDA
     static memory_types mem_type = CUDA_MEMORY;
 #elif defined(VIENNACL_WITH_OPENCL)
-#if defined (VIENNAL_WITH_HSA)
+#if defined (VIENNACL_WITH_HSA)
     static memory_types mem_type = HSA_MEMORY;
 #else
     static memory_types mem_type = OPENCL_MEMORY;
@@ -118,9 +118,9 @@ public:
 
 #ifdef VIENNACL_WITH_HSA
   /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
-  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer>       & hsa_handle()       { return hsa_handle_; }
+  ram_handle_type       & hsa_handle()       { return ram_handle_; }
   /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
-  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer> const & hsa_handle() const { return hsa_handle_; }
+ ram_handle_type const & hsa_handle() const { return ram_handle_; }
 
 #endif
 
@@ -196,7 +196,7 @@ public:
 #endif
 #ifdef VIENNACL_WITH_HSA
     case HSA_MEMORY:
-      return hsa_handle_.get() == other.hsa_handle_.get();
+    	return ram_handle_.get() == other.ram_handle_.get();
 #endif
     default: break;
     }
@@ -267,7 +267,7 @@ private:
   memory_types active_handle_;
   ram_handle_type ram_handle_;
 #ifdef VIENNACL_WITH_HSA
-  viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer> hsa_handle_;
+  //viennacl::hsa::handle< viennacl::hsa::hsa_registered_pointer> hsa_handle_;
 #endif
 #ifdef VIENNACL_WITH_OPENCL
   viennacl::ocl::handle<cl_mem> opencl_handle_;

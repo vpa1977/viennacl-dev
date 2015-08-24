@@ -16,6 +16,7 @@ namespace viennacl
 	{
 		namespace opencl
 		{
+                    template<class context_class>
 			struct ml_helper_kernels
 			{
 				static std::string program_name()
@@ -23,7 +24,7 @@ namespace viennacl
 				    return "ml_helpers";
 				}
 
-				static void init(viennacl::ocl::context& ctx)
+				static void init(context_class& ctx)
 				{
 					static bool done = false; // TODO : multiple hsa contexts. At the moment there can be only one
 					if (done)
@@ -100,7 +101,7 @@ namespace viennacl
 						"	double old = *loc;                                        "
 						"	double sum = old + f;                                     "
 						"	volatile bool test = true;                                "
-						"	while ((test = atomic_compare_exchange_weak((atomic_double*)loc, &old, sum)) == false) "
+						"	while ((test = atomic_compare_exchange_weak((atomic_long*)loc, (long*)&old, (long)sum)) == false) "
 						"		sum = old + f; "
 						"\n}\n";
 					code.append(atomic_add_helper);
@@ -125,6 +126,15 @@ namespace viennacl
 						"    }"
 					    "}\n";*/
 
+                                        const char* const sparse_matrix_update_sparse_row =
+                                                "\n__kernel void update_sparse_row(int range, __global double* output,__global double* elements, __global int* columns, double factor, int start)"
+						"\n{"
+                                                " for (int id = get_global_id(0) ; id< range; id+= get_global_size(0)) {"
+						"    double upd = elements[start + get_global_id(0)] * factor; int col = columns[ start + get_global_id(0)]; my_atomic_add(&output[col], upd);"
+                                                " }"
+						"}\n";
+
+                                        code.append(sparse_matrix_update_sparse_row);
 					const char* const sparse_matrix_by_constant = "\n"
 						"\n__kernel void update_row_weights( __global double* output,__global double* elements, __global int* columns, double factor, int start)"
 						"\n{"
@@ -142,7 +152,7 @@ namespace viennacl
 						"			int end = rows[ id +1];     "
 						"           ndrange_t range = ndrange_1D(end - start); "
 						"           enqueue_kernel(get_default_queue() , "
-						"           CLK_ENQUEUE_FLAGS_KERNEL_NO_WAIT, range,^{update_row_weights(output,elements, columns, factors[id],start); });  "
+						"           CLK_ENQUEUE_FLAGS_NO_WAIT, range,^{update_row_weights(output,elements, columns, factors[id],start); });  "
 						"       }             "
 						"    }"
 						"}\n";

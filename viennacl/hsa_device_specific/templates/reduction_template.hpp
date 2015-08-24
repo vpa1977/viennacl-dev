@@ -363,15 +363,14 @@ public:
         {
           if (tmpidx_.size() <= j)
           {
-        	vcl::handle< vcl::hsa_registered_pointer> ptr = kernels[k]->context().create_memory(CL_MEM_READ_WRITE, p_.num_groups*4);
-            tmpidx_.push_back(ptr);
+            tmpidx_.push_back(viennacl::tools::shared_ptr<char>(new char[p_.num_groups*4]));
           }
           kernels[k]->arg(n_arg++, tmpidx_[j]);
           j++;
         }
 
         if (tmp_.size() <= i)
-          tmp_.push_back(kernels[k]->context().create_memory(CL_MEM_READ_WRITE, p_.num_groups*scalartype_size));
+          tmp_.push_back(viennacl::tools::shared_ptr<char>(new char[p_.num_groups*scalartype_size]));
         kernels[k]->arg(n_arg++, tmp_[i]);
         i++;
       }
@@ -385,8 +384,8 @@ public:
 
 private:
 #ifdef VIENNACL_WITH_HSA
-  std::vector< vcl::handle<vcl::hsa_registered_pointer> > tmp_;
-  std::vector< vcl::handle<vcl::hsa_registered_pointer> > tmpidx_;
+  std::vector< viennacl::tools::shared_ptr<char> > tmp_;
+  std::vector< viennacl::tools::shared_ptr<char> > tmpidx_;
 
 #else
   std::vector< vcl::handle<cl_mem> > tmp_;

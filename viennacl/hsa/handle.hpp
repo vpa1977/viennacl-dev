@@ -96,11 +96,11 @@ public:
 	}
 
 	void prepare() {
-		hsa_memory_register(m_ptr, m_size);
+		//hsa_memory_register(m_ptr, m_size);
 	}
 
 	void release() {
-		hsa_memory_deregister(m_ptr, m_size);
+		//hsa_memory_deregister(m_ptr, m_size);
 		if (m_own)
 		{
 			free(m_ptr);
@@ -206,6 +206,8 @@ public:
 		if (h_ != 0)
 			dec();
 	}
+        
+        
 
 	size_t refcount()
 	{

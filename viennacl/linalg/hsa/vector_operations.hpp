@@ -75,7 +75,7 @@ template<typename NumericT, typename ScalarT1>
 void av(vector_base<NumericT> & x,
         vector_base<NumericT> const & y, ScalarT1 const & alpha, vcl_size_t /* len_alpha */, bool reciprocal_alpha, bool flip_sign_alpha)
 {
-  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(y).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
+//  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(y).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
   std::string kernel_name("assign_*v_**00");
   bool is_scalar_cpu = is_cpu_scalar<ScalarT1>::value;
   kernel_name[7]  =    is_scalar_cpu ? 'h' : 'd';
@@ -92,8 +92,8 @@ void avbv(vector_base<NumericT> & x,
           vector_base<NumericT> const & y, ScalarT1 const & alpha, vcl_size_t /* len_alpha */, bool reciprocal_alpha, bool flip_sign_alpha,
           vector_base<NumericT> const & z, ScalarT2 const & beta,  vcl_size_t /* len_beta */,  bool reciprocal_beta,  bool flip_sign_beta)
 {
-  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(y).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
-  assert(viennacl::traits::hsa_handle(y).context() == viennacl::traits::hsa_handle(z).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
+//  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(y).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
+//  assert(viennacl::traits::hsa_handle(y).context() == viennacl::traits::hsa_handle(z).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
 
   std::string kernel_name("assign_*v*v_****");
   bool is_scalar_cpu1 = is_cpu_scalar<ScalarT1>::value;
@@ -200,9 +200,6 @@ void inner_prod_impl(vector_base<NumericT> const & x,
                      vector_base<NumericT> const & y,
                      scalar<NumericT> & result)
 {
-  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(y).context() && bool("Vectors do not reside in the same OpenCL context. Automatic migration not yet supported!"));
-  assert(viennacl::traits::hsa_handle(x).context() == viennacl::traits::hsa_handle(result).context() && bool("Operands do not reside in the same OpenCL context. Automatic migration not yet supported!"));
-
   scheduler::statement statement = scheduler::preset_hsa::inner_prod(&result, &x, &y);
   kernels::vector<NumericT>::execution_handler(viennacl::hsa::current_context()).execute("inner_prod", statement);
 }

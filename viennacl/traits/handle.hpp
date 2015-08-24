@@ -206,14 +206,14 @@ viennacl::ocl::context & opencl_context(T const & obj)
 #ifdef VIENNACL_WITH_HSA
 /** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Non-const version. */
 template<typename T>
-viennacl::hsa::handle<viennacl::hsa::hsa_registered_pointer> & hsa_handle(T & obj)
+viennacl::tools::shared_ptr<char> & hsa_handle(T & obj)
 {
   return viennacl::traits::handle(obj).hsa_handle();
 }
 
 /** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Const version. */
 template<typename T>
-viennacl::hsa::handle<viennacl::hsa::hsa_registered_pointer> const & hsa_handle(T const & obj)
+viennacl::tools::shared_ptr<char> const & hsa_handle(T const & obj)
 {
   return viennacl::traits::handle(obj).hsa_handle();
 }
@@ -230,10 +230,11 @@ inline float     hsa_handle(float           val) { return val; }  //for unificat
 inline double    hsa_handle(double          val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
 
 
+
 template<typename T>
 viennacl::hsa::context & hsa_context(T const & obj)
 {
-  return const_cast<viennacl::hsa::context &>(hsa_handle(obj).context());
+  return viennacl::hsa::current_context(); // there can be only 1 hsa context at the moment
 }
 
 #endif

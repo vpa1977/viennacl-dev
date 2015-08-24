@@ -31,6 +31,7 @@
 #include "viennacl/hsa/program.hpp"
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/local_mem.hpp"
+#include "viennacl/tools/shared_ptr.hpp"
 
 namespace viennacl
 {
@@ -352,6 +353,17 @@ std::cout << "ViennaCL: End of Finalization"<< std::endl;
         #endif
         arg_buffer_.set(pos,val);
       }
+
+
+      void arg(unsigned int pos, const viennacl::tools::shared_ptr<char>& tmp )
+      {
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+std::cout << "ViennaCL: Setting memory kernel argument " << h << " at pos " << pos << " for kernel " << name_ << std::endl;
+#endif
+
+     	 arg( pos , (const void*) tmp.get());
+      }
+
 
       template <typename T>
       void arg(unsigned int pos, viennacl::vector_base<T> const& h )

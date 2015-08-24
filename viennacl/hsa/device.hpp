@@ -96,6 +96,11 @@ public:
   {
 	  return true;
   }
+  
+  const size_t max_compute_units() const 
+  {
+      return 6; // Kaveri
+  }
 
   const std::string double_support_extension() const
   {

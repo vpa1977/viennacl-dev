@@ -26,7 +26,7 @@
 #include "viennacl/ml/host/weights_update.hpp"
 
 #ifdef VIENNACL_WITH_HSA
-#include "viennacl/ml/hsa/weights_update.hpp"
+#include "viennacl/ml/hsa/ml_helpers.hpp"
 #endif
 
 #ifdef VIENNACL_WITH_OPENCL
@@ -49,6 +49,12 @@ namespace ml
         	viennacl::ml::opencl::sgd_compute_factors(classes, prod_result, factors, is_nominal, loss, learning_rate, bias);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+        case viennacl::HSA_MEMORY:
+        	viennacl::ml::hsa::sgd_compute_factors(classes, prod_result, factors, is_nominal, loss, learning_rate, bias);
+          break;
+#endif
+
         default:
         	throw memory_exception("not implemented");
 		 }
@@ -86,9 +92,10 @@ namespace ml
 	#endif
 	#ifdef VIENNACL_WITH_HSA
 	        case viennacl::HSA_MEMORY:
-	        	throw memory_exception("not implemented");
+	        	return viennacl::ml::hsa::reduce(v);
 	          break;
 	#endif
+
 
 	#ifdef VIENNACL_WITH_CUDA
 	        case viennacl::CUDA_MEMORY:

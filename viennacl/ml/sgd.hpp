@@ -131,7 +131,7 @@ public:
 
 	void update_weights_cpu(bool nominal,const std::vector<double>& class_values,const viennacl::scalar<double>& prod_result, const viennacl::vector<double>& row_values, int row) {
 		double y;
-		viennacl::vector<double> z(0,viennacl::traits::context(prod_result));
+		viennacl::scalar<double> z(0,viennacl::traits::context(prod_result));
 		if (nominal) {
 			y = class_values.at(row) ? 1 : -1;
 			z = y * (prod_result + bias_);
@@ -208,7 +208,7 @@ public:
 	void print_weights()
 	{
 		std::cout << "weights: ";
-		for (int i = 0; i < weights_.size(); ++i)
+		for (size_t i = 0; i < weights_.size(); ++i)
 			std::cout << weights_(i) << " ";
 		std::cout << std::endl;
 	}
@@ -310,7 +310,7 @@ public:
 #ifdef VIENNACL_WITH_HSA
 		case viennacl::HSA_MEMORY:
 			decay_weights_cpu(class_values.size());
-			update_weights_cpu(nominal_, class_values, prod_result_, batch);
+			update_weights_opencl(nominal_, class_values, prod_result_, batch);
 			break;
 #endif
 		default:
@@ -448,9 +448,6 @@ public:
 	}
 
 #endif
-#ifdef VIENNACL_WITH_HSA
-
-#endif
 
 	std::vector<double> get_votes_for_instance_cpu(
 			const viennacl::vector<double>& instance) {
@@ -492,14 +489,15 @@ private:
 	viennacl::vector<double> weights_;
 	viennacl::vector<double> factors_;
 	viennacl::vector<double> prod_result_;
+        viennacl::scalar<double> sum_;
+	viennacl::scalar<double> bias_;
+	viennacl::vector<double> all_ones_; ;
+        
 	double learning_rate_;
 	double lambda_;
-	viennacl::scalar<double> bias_;
-	viennacl::scalar<double> sum_;
-	viennacl::vector<double> all_ones_; ;
 	bool nominal_;
 	size_t instance_size_;
-
+	
 };
 
 

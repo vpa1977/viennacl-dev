@@ -42,7 +42,6 @@ template<typename KernelType>
 void enqueue(KernelType & kernel, viennacl::hsa::command_queue const & queue) {
 
 
-	hsa_signal_t signal;
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
 std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::endl;
@@ -52,8 +51,11 @@ std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::en
 	return;
 #endif
 
+#if defined(VIENNACL_HSA_WAIT_KERNEL)
+	hsa_signal_t signal;        
 	hsa_signal_create(1,0,NULL,&signal);
-
+#endif
+        
 	// get command queue from context
 	hsa_queue_t* command_queue = queue.handle().get();
 	hsa_kernel_dispatch_packet_t aql;
@@ -98,7 +100,9 @@ std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::en
 	aql.group_segment_size = kernel.workgroup_group_segment_byte_size_
 			+ kernel.arg_buffer_.dynamic_local_size();
 	aql.private_segment_size =	kernel.workitem_private_segment_byte_size_;
+#if defined(VIENNACL_HSA_WAIT_KERNEL)        
 	aql.completion_signal = signal;
+#endif        
 	// write packet
 	uint32_t queueMask = command_queue->size - 1;
 	uint64_t index = hsa_queue_load_write_index_relaxed(command_queue);
@@ -111,9 +115,11 @@ std::cout << "ViennaCL: queue" << kernel.name() << " for execution "  << std::en
 	// Ring door bell
 	hsa_signal_store_relaxed(command_queue->doorbell_signal, index );
 
+#if defined(VIENNACL_HSA_WAIT_KERNEL)
 	hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t)-1, HSA_WAIT_STATE_ACTIVE);
 
 	hsa_signal_destroy(signal);
+#endif        
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
 std::cout << "ViennaCL: Completed " << kernel.name() << std::endl;

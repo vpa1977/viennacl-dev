@@ -38,27 +38,6 @@ namespace detail
 {
 
 
-template<typename NumericT>
-viennacl::hsa::kernel & legacy_kernel_for_matrix(matrix_base<NumericT> const & M, std::string const & kernel_name)
-{
-  viennacl::hsa::context & ctx = traits::opencl_context(M);
-  viennacl::hsa::program * program;
-  if (M.row_major())
-  {
-    typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, row_major>  KernelClass;
-    KernelClass::init(ctx);
-    program = &ctx.get_program(KernelClass::program_name());
-  }
-  else
-  {
-    typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, column_major>  KernelClass;
-    KernelClass::init(ctx);
-    program = &ctx.get_program(KernelClass::program_name());
-  }
-  return program->get_kernel(kernel_name);
-}
-
-
 inline cl_uint make_options(vcl_size_t length, bool reciprocal, bool flip_sign)
 {
   return static_cast<cl_uint>( ((length > 1) ? (cl_uint(length) << 2) : 0) + (reciprocal ? 2 : 0) + (flip_sign ? 1 : 0) );
