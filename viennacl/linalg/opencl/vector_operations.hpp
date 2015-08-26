@@ -63,8 +63,8 @@ void convert(vector_base<DestNumericT> & dest, vector_base<SrcNumericT> const & 
   kernel_name += viennacl::ocl::type_to_string<SrcNumericT>::apply();
 
   viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(dest).context());
-  viennacl::linalg::opencl::kernels::vector_convert::init(ctx);
-  viennacl::ocl::kernel& k = ctx.get_kernel(viennacl::linalg::opencl::kernels::vector_convert::program_name(), kernel_name);
+  viennacl::linalg::opencl::kernels::vector_convert<>::init(ctx);
+  viennacl::ocl::kernel& k = ctx.get_kernel(viennacl::linalg::opencl::kernels::vector_convert<>::program_name(), kernel_name);
 
   viennacl::ocl::enqueue(k( dest, cl_uint(dest.start()), cl_uint(dest.stride()), cl_uint(dest.size()),
                             src,  cl_uint( src.start()), cl_uint( src.stride())

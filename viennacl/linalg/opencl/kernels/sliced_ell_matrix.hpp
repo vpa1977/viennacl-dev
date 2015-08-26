@@ -81,29 +81,29 @@ void generate_sliced_ell_vec_mul(StringT & source, std::string const & numeric_s
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for ell_matrix. */
-template<typename NumericT, typename IndexT>
+template<typename NumericT, typename IndexT, typename Context = viennacl::ocl::context>
 struct sliced_ell_matrix;
 
-template<typename NumericT>
-struct sliced_ell_matrix<NumericT, unsigned int>
+template<typename NumericT, typename Context>
+struct sliced_ell_matrix<NumericT, unsigned int, Context>
 {
   static std::string program_name()
   {
     return viennacl::ocl::type_to_string<NumericT>::apply() + viennacl::ocl::type_to_string<unsigned int>::apply() + "_sliced_ell_matrix";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(1024);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       // fully parametrized kernels:
       generate_sliced_ell_vec_mul(source, numeric_string);

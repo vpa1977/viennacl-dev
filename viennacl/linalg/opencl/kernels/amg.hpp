@@ -8,6 +8,11 @@
 
 #include "viennacl/linalg/opencl/common.hpp"
 
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/hsa/context.hpp"
+#include "viennacl/hsa/kernel.hpp"
+#endif
+
 /** @file viennacl/linalg/opencl/kernels/amg.hpp
  *  @brief OpenCL kernel file for operations related to algebraic multigrid */
 namespace viennacl
@@ -342,7 +347,7 @@ void generate_amg_interpol_sa(StringT & source, std::string const & numeric_stri
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for compressed_matrix. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 struct amg
 {
   static std::string program_name()
@@ -350,18 +355,18 @@ struct amg
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_amg";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context& ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(2048);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       generate_amg_influence_trivial(source);
       generate_amg_pmis2_init_workdata(source);

@@ -37,7 +37,6 @@
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/command_queue.hpp"
 #include "viennacl/hsa/brig_compiler.hpp"
-#include "viennacl/hsa/brig_helper.hpp"
 #include "viennacl/tools/sha1.hpp"
 #include "viennacl/tools/shared_ptr.hpp"
 
@@ -186,7 +185,7 @@ namespace viennacl
       }
 
       /** @brief Initializes the context from an existing, user-supplied context */
-      void init(hsa_environment c)
+      void init(hsa_environment* c)
       {
         init_existing(c);
       }
@@ -221,7 +220,7 @@ namespace viennacl
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
         std::cout << "ViennaCL: Adding new queue for device " << dev << " to context " << h_ << std::endl;
 #endif
-        size_t queue_size = 0;
+        uint32_t queue_size = 0;
         hsa_status_t status = hsa_agent_get_info(dev, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
         if (status != HSA_STATUS_SUCCESS)
           throw std::runtime_error("unable to get queue size");
@@ -527,7 +526,7 @@ namespace viennacl
       }
 
       /** @brief Returns the context handle */
-      const viennacl::hsa::handle<hsa_environment> & handle() const
+      const viennacl::hsa::handle<hsa_environment*> & handle() const
       {
         return h_;
       }
@@ -547,12 +546,12 @@ namespace viennacl
       /** @brief Less-than comparable for compatibility with std:map  */
       bool operator<(context const & other) const
       {
-        return false;
+        return h_.get() < other.handle().get();
       }
 
       bool operator==(context const & other) const
       {
-        return true;
+        return h_.get() == other.handle().get();
       }
 
     private:
@@ -566,8 +565,8 @@ namespace viennacl
         std::cout << "ViennaCL: Initializing new ViennaCL context." << std::endl;
 #endif
 
-        hsa_environment env;
-        env.startup();
+        hsa_environment* env = new hsa_environment();
+        env->startup();
         h_ = env;
 
 
@@ -580,7 +579,7 @@ namespace viennacl
 #endif
 
 
-          std::vector<device> devices = h_.get().get_devices(device_type_);
+          std::vector<device> devices = h_.get()->get_devices(device_type_);
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
           std::cout << "ViennaCL: Number of devices for context: " << devices.size() << std::endl;
 #endif
@@ -618,7 +617,7 @@ namespace viennacl
       }
 
       /** @brief Reuses a supplied context. */
-      void init_existing(hsa_environment c)
+      void init_existing(hsa_environment* c)
       {
         assert(!initialized_ && bool("ViennaCL FATAL error: Context already created!"));
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
@@ -637,7 +636,7 @@ namespace viennacl
 #endif
 
 
-          std::vector<device> devices = h_.get().get_devices(device_type_);
+          std::vector<device> devices = h_.get()->get_devices(device_type_);
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
           std::cout << "ViennaCL: Number of devices for context: " << devices.size() << std::endl;
 #endif
@@ -682,7 +681,7 @@ namespace viennacl
       bool initialized_;
       std::string cache_path_;
       hsa_device_type_t device_type_;
-      viennacl::hsa::handle<hsa_environment> h_;
+      viennacl::hsa::handle<hsa_environment*> h_;
 
       std::vector< viennacl::hsa::device > devices_;
       vcl_size_t current_device_id_;
@@ -800,7 +799,7 @@ namespace viennacl
       hsa_agent_iterate_regions(p_context()->current_device().id(), get_kernarg, &kernarg_region_);
 
 
-      hsa_executable_iterate_symbols(handle_.get().executable_, [](hsa_executable_t executable, hsa_executable_symbol_t symbol, void* data)->hsa_status_t {
+      hsa_executable_iterate_symbols(handle_.get().executable_, [](hsa_executable_t /*executable*/, hsa_executable_symbol_t symbol, void* data)->hsa_status_t {
         viennacl::hsa::program& prg = *(viennacl::hsa::program*)data;
         hsa_symbol_kind_t kind;
                 hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_TYPE, &kind);

@@ -105,8 +105,8 @@ void convert(matrix_base<DestNumericT> & dest, matrix_base<SrcNumericT> const & 
   kernel_name += viennacl::ocl::type_to_string<SrcNumericT>::apply();
 
   viennacl::ocl::context & ctx = const_cast<viennacl::ocl::context &>(viennacl::traits::opencl_handle(dest).context());
-  viennacl::linalg::opencl::kernels::matrix_convert::init(ctx);
-  viennacl::ocl::kernel& k = ctx.get_kernel(viennacl::linalg::opencl::kernels::matrix_convert::program_name(), kernel_name);
+  viennacl::linalg::opencl::kernels::matrix_convert<>::init(ctx);
+  viennacl::ocl::kernel& k = ctx.get_kernel(viennacl::linalg::opencl::kernels::matrix_convert<>::program_name(), kernel_name);
 
   viennacl::ocl::enqueue(k( dest, cl_uint(dest.start1()), cl_uint(dest.stride1()), cl_uint(dest.size1()), cl_uint(dest.internal_size1()), cl_uint(dest.start2()), cl_uint(dest.stride2()), cl_uint(dest.size2()), cl_uint(dest.internal_size2()),
                             src,  cl_uint( src.start1()), cl_uint( src.stride1()), cl_uint( src.size1()), cl_uint( src.internal_size1()), cl_uint( src.start2()), cl_uint( src.stride2()), cl_uint( src.size2()), cl_uint( src.internal_size2())

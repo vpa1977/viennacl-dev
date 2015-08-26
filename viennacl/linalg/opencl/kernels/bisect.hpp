@@ -2562,7 +2562,7 @@ namespace kernels
   /** @brief Main kernel class for the generation of the bisection kernels and utilities
     *
     */
-  template <class NumericT>
+  template <class NumericT,typename Context = viennacl::ocl::context>
   struct bisect_kernel
   {
     static std::string program_name()
@@ -2570,18 +2570,18 @@ namespace kernels
       return viennacl::ocl::type_to_string<NumericT>::apply() + "_bisect_kernel";
     }
 
-    static void init(viennacl::ocl::context & ctx)
+    static void init(Context & ctx)
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
-      static std::map<cl_context, bool> init_done;
+      static std::map<void*, bool> init_done;
       if (!init_done[ctx.handle().get()])
       {
         std::string source;
         source.reserve(8192);
 
-        viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+        viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
         // only generate for floating points (forces error for integers)
         if (numeric_string == "float" || numeric_string == "double")

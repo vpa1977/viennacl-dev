@@ -64,7 +64,7 @@ void generate_vec_mul(StringT & source, std::string const & numeric_string)
 //////////////////////////// Part 2: Main kernel class ////////////////////////////////////
 
 /** @brief Main kernel class for generating OpenCL kernels for compressed_compressed_matrix. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 struct compressed_compressed_matrix
 {
   static std::string program_name()
@@ -72,18 +72,18 @@ struct compressed_compressed_matrix
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_compressed_compressed_matrix";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(8192);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       // fully parametrized kernels:
       generate_vec_mul(source, numeric_string);

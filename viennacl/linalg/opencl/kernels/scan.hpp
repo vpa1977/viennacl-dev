@@ -151,7 +151,7 @@ void generate_scan_kernel_3(StringType & source, std::string const & numeric_str
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for singular value decomposition of dense matrices. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 struct scan
 {
   static std::string program_name()
@@ -159,18 +159,18 @@ struct scan
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_scan";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(1024);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       generate_scan_kernel_1(source, numeric_string);
       generate_scan_kernel_2(source, numeric_string);

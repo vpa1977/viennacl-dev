@@ -126,7 +126,7 @@ void generate_matrix_solve_blas3(StringT & source, std::string const & numeric_s
   * @param F1  Row/Column majority tag for the system matrix
   * @param F2  Row/Column majority tag for the right hand side matrix
   */
-template<typename NumericT, typename LayoutT1, typename LayoutT2>
+template<typename NumericT, typename LayoutT1, typename LayoutT2, typename Context = viennacl::ocl::context>
 struct matrix_solve
 {
   static std::string program_name()
@@ -134,12 +134,12 @@ struct matrix_solve
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_matrix_solve_" + detail::type_to_string(LayoutT1()) + detail::type_to_string(LayoutT2());
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
       bool matrix_row_major = viennacl::is_row_major<LayoutT1>::value;
       bool rhs_row_major    = viennacl::is_row_major<LayoutT2>::value;
@@ -147,7 +147,7 @@ struct matrix_solve
       std::string source;
       source.reserve(8192);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       // only generate for floating points (forces error for integers)
       if (numeric_string == "float" || numeric_string == "double")

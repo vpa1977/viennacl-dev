@@ -59,7 +59,7 @@ static void generate_inner_prod_impl(device_specific::execution_handler & handle
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with viennacl::vector<> without involving matrices, multiple inner products, or element-wise operations other than addition or subtraction. */
-template<typename NumericT>
+template<typename NumericT, typename Context= viennacl::ocl::context >
 class vector
 {
 private:
@@ -110,13 +110,13 @@ private:
   }
 
 public:
-  static device_specific::execution_handler & execution_handler(viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(Context & ctx)
   {
-    static std::map<cl_context, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
+    static std::map<void*, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       viennacl::ocl::device const & device = ctx.current_device();
@@ -160,17 +160,17 @@ public:
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with viennacl::vector<> without involving matrices, multiple inner products, or element-wise operations other than addition or subtraction. */
-template<typename NumericT>
+template<typename NumericT, typename Context= viennacl::ocl::context >
 class vector_multi_inner_prod
 {
 public:
-  static device_specific::execution_handler & execution_handler(viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(Context & ctx)
   {
-    static std::map<cl_context, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
+    static std::map<void*, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
 
@@ -198,18 +198,18 @@ public:
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for elementwise operations other than addition and subtraction on/with viennacl::vector<>. */
-template<typename NumericT>
+template<typename NumericT, typename Context= viennacl::ocl::context >
 struct vector_element
 {
 
 public:
-  static device_specific::execution_handler & execution_handler(viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(Context & ctx)
   {
-    static std::map<cl_context, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
+    static std::map<void*, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       using namespace scheduler;
@@ -284,6 +284,7 @@ void generate_vector_convert(StringT & source, std::string const & dest_type, st
 }
 
 /** @brief Main kernel class for vector conversion routines (e.g. convert vector<int> to vector<float>). */
+template <typename Context= viennacl::ocl::context>
 struct vector_convert
 {
 
@@ -293,9 +294,9 @@ public:
     return "vector_convert";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
       std::string source;

@@ -19,14 +19,15 @@ namespace viennacl
      */
     struct compiler_helper
     {
-
+      const char* CLOC_COMPILER;
+      
       compiler_helper() : CLOC_COMPILER(0)
       {
         setenv("CLOC_COMPILER", "cloc.sh", 0);
         CLOC_COMPILER = getenv("CLOC_COMPILER");
       }
 
-      std::vector<char> compile_brig(const std::string& content, const char* program_name = NULL)
+      std::vector<char> compile_brig(const std::string& content)
       {
         char buffer[L_tmpnam];
         strcpy(buffer, "baseXXXXXX");
@@ -40,10 +41,12 @@ namespace viennacl
         std::string command(CLOC_COMPILER);
         command += " ";
         command += name;
-        system(command.c_str());
+        int err = system(command.c_str());
         remove(name.c_str());
         name = buffer;
         name += ".brig";
+        if (err)
+          throw "CLOC compilation failed";
 
         tmp = fopen(name.c_str(), "rb");
         fseek(tmp, 0, SEEK_END);
@@ -60,6 +63,6 @@ namespace viennacl
 
     };
   }
-};
+}
 
 #endif

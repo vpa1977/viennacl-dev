@@ -34,15 +34,15 @@ namespace ocl
 
 /** @brief Ensures that double precision types are only allocated if it is supported by the device. If double precision is requested for a device not capable of providing that, a double_precision_not_provided_error is thrown.
  */
-template<typename ScalarType>
+template<typename ScalarType, typename Context>
 struct DOUBLE_PRECISION_CHECKER
 {
-  static void apply(viennacl::ocl::context const &) {}
+  static void apply(Context const &) {}
 };
 
 /** \cond */
 template<>
-struct DOUBLE_PRECISION_CHECKER<double>
+struct DOUBLE_PRECISION_CHECKER<double, viennacl::ocl::context>
 {
   static void apply(viennacl::ocl::context const & ctx)
   {
@@ -73,12 +73,21 @@ template<> struct type_to_string<double> { static std::string apply() { return "
 
 template<typename T>
 void append_double_precision_pragma(viennacl::ocl::context const & /*ctx*/, std::string & /*source*/) {}
+template<typename T>
+void append_double_precision_pragma(std::string const & /*pragma*/, std::string & /*source*/) {}
 
 template<>
 inline void append_double_precision_pragma<double>(viennacl::ocl::context const & ctx, std::string & source)
 {
   source.append("#pragma OPENCL EXTENSION " + ctx.current_device().double_support_extension() + " : enable\n\n");
 }
+
+template<>
+inline void append_double_precision_pragma<double>(std::string const & ext_text, std::string & source)
+{
+  source.append("#pragma OPENCL EXTENSION " +ext_text + " : enable\n\n");
+}
+
 
 } //ocl
 } //viennacl

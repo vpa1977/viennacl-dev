@@ -485,7 +485,7 @@ namespace detail
 //////////////////////////// Part 2: Main kernel class ////////////////////////////////////
 
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with viennacl::vector<> without involving matrices, multiple inner products, or element-wise operations other than addition or subtraction. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 class matrix
 {
 private:
@@ -538,14 +538,14 @@ private:
 
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
+    std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       viennacl::ocl::device const & device = ctx.current_device();
@@ -601,19 +601,19 @@ public:
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for elementwise operations other than addition and subtraction on/with viennacl::vector<>. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 struct matrix_element
 {
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
+    std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       using namespace scheduler;
@@ -689,17 +689,17 @@ public:
 
 
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with viennacl::vector<> without involving matrices, multiple inner products, or element-wise operations other than addition or subtraction. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 class row_wise_reduction
 {
 public:
-  static device_specific::execution_handler & execution_handler(viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(Context & ctx)
   {
-    static std::map<cl_context, device_specific::execution_handler> handlers_map;
-    cl_context key = ctx.handle().get();
+    static std::map<void*, device_specific::execution_handler> handlers_map;
+    void* key = ctx.handle().get();
     if (handlers_map.find(key) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       viennacl::ocl::device const & device = ctx.current_device();
@@ -719,18 +719,18 @@ public:
 };
 
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with viennacl::vector<> without involving matrices, multiple inner products, or element-wise operations other than addition or subtraction. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 class matrix_prod
 {
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, viennacl::ocl::context & ctx)
+  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, cl_context>, device_specific::execution_handler> handlers_map;
-    cl_context h = ctx.handle().get();
-    std::pair<bool, cl_context> key(is_row_major, h);
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    void* h = ctx.handle().get();
+    std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
       viennacl::ocl::device const & device = ctx.current_device();
@@ -768,7 +768,7 @@ public:
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for operations on/with dense matrix objects of type viennacl::matrix<>. */
-template<typename NumericT, typename LayoutT>
+template<typename NumericT, typename LayoutT, typename Context = viennacl::ocl::context>
 struct matrix_legacy
 {
   static std::string program_name()
@@ -776,19 +776,19 @@ struct matrix_legacy
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_matrix_" + detail::type_to_string(LayoutT());
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
       bool is_row_major = viennacl::is_row_major<LayoutT>::value;
 
       std::string source;
       source.reserve(8192);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       // kernels with mostly predetermined skeleton:
       generate_scaled_rank1_update(source, numeric_string, is_row_major, true);
@@ -857,6 +857,7 @@ void generate_matrix_convert(StringT & source, std::string const & dest_type, st
 }
 
 /** @brief Main kernel class for vector conversion routines (e.g. convert vector<int> to vector<float>). */
+template <typename Context = viennacl::ocl::context>
 struct matrix_convert
 {
 
@@ -866,9 +867,9 @@ public:
     return "matrix_convert";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
       std::string source;
@@ -911,7 +912,7 @@ public:
 
       if (ctx.current_device().double_support())
       {
-        viennacl::ocl::append_double_precision_pragma<double>(ctx, source);
+        viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
         generate_matrix_convert(source, viennacl::ocl::type_to_string<int>::apply(),           viennacl::ocl::type_to_string<double>::apply());
         generate_matrix_convert(source, viennacl::ocl::type_to_string<unsigned int>::apply(),  viennacl::ocl::type_to_string<double>::apply());

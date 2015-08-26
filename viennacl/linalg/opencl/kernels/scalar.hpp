@@ -239,7 +239,7 @@ void generate_scalar_swap(StringT & source, std::string const & numeric_string)
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for operations involving viennacl::scalar<>, but not viennacl::vector<> or viennacl::matrix<>. */
-template<typename NumericT>
+template<typename NumericT, typename Context = viennacl::ocl::context>
 struct scalar
 {
   static std::string program_name()
@@ -247,18 +247,18 @@ struct scalar
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_scalar";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(8192);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       // fully parametrized kernels:
       generate_asbs(source, numeric_string);

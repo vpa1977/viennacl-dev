@@ -583,7 +583,7 @@ void generate_spai_block_r_assembly(StringT & source, std::string const & numeri
 
 // main kernel class
 /** @brief Main kernel class for generating OpenCL kernels for the sparse approximate inverse preconditioners. */
-template<typename NumericT>
+template<typename NumericT, typename Context= viennacl::ocl::context >
 struct spai
 {
   static std::string program_name()
@@ -591,18 +591,18 @@ struct spai
     return viennacl::ocl::type_to_string<NumericT>::apply() + "_spai";
   }
 
-  static void init(viennacl::ocl::context & ctx)
+  static void init(Context & ctx)
   {
-    static std::map<cl_context, bool> init_done;
+    static std::map<void*, bool> init_done;
     if (!init_done[ctx.handle().get()])
     {
-      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT>::apply(ctx);
+      viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
 
       std::string source;
       source.reserve(1024);
 
-      viennacl::ocl::append_double_precision_pragma<NumericT>(ctx, source);
+      viennacl::ocl::append_double_precision_pragma<double>( ctx.current_device().double_support_extension(), source);
 
       generate_spai_assemble_blocks(source, numeric_string);
       generate_spai_block_bv_assembly(source, numeric_string);

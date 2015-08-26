@@ -25,7 +25,6 @@
 #include <string>
 #include <vector>
 #include "viennacl/hsa/forwards.h"
-#include "viennacl/hsa/brig_helper.hpp"
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/kernel.hpp"
 #include "viennacl/tools/shared_ptr.hpp"

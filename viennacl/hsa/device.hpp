@@ -92,12 +92,12 @@ namespace viennacl
         return NOT_IMPLEMENTED;
       }
 
-      const bool double_support() const
+      bool double_support() const
       {
         return true;
       }
 
-      const size_t max_compute_units() const
+      size_t max_compute_units() const
       {
         return 6; // Kaveri
       }
@@ -117,12 +117,12 @@ namespace viennacl
         return device_.handle == other.handle;
       }
 
-      const size_t local_mem_size() const
+      size_t local_mem_size() const
       {
         return 32768;
       }
 
-      const size_t max_work_group_size() const
+      size_t max_work_group_size() const
       {
         return 256;
       }
@@ -136,17 +136,17 @@ namespace viennacl
         return ret;
       }
 
-      const int vendor_id() const
+      int vendor_id() const
       {
         return 4098;
       }
 
-      const int type() const
+      int type() const
       {
         return CL_DEVICE_TYPE_GPU;
       }
 
-      const viennacl::ocl::device_architecture_family architecture_family() const
+      viennacl::ocl::device_architecture_family architecture_family() const
       {
         return viennacl::ocl::northern_islands;
       }

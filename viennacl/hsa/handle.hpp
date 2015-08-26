@@ -31,7 +31,6 @@
 #include <vector>
 #include <algorithm>
 #include "viennacl/hsa/forwards.h"
-#include "viennacl/hsa/brig_helper.hpp"
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/error.hpp"
 
@@ -122,29 +121,18 @@ namespace viennacl
     };
 
     template<>
-    struct handle_release_helper<hsa_environment>
+    struct handle_release_helper<hsa_environment*>
     {
 
-      static void release(hsa_environment& ptr)
+      static void release(hsa_environment* ptr)
       {
         hsa_shut_down();
+        delete ptr;
       }
     };
 
     /** \cond */
-    //hsa_registered_pointer:
-
-    template<>
-    struct handle_release_helper<hsa_registered_pointer>
-    {
-
-      static void release(hsa_registered_pointer & ptr)
-      {
-        ptr.release();
-      }
-    };
-
-    template<>
+   template<>
     struct handle_release_helper<hsa_queue_t*>
     {
 
@@ -229,7 +217,7 @@ namespace viennacl
       }
 
       /** @brief Wraps an HSA handle including its associated context. Decreases the reference count if the handle object is destroyed or another HSA handle is assigned. */
-      handle & operator=(std::pair<HSA_TYPE, cl_context> p)
+      handle & operator=(std::pair<HSA_TYPE, viennacl::hsa::context*> p)
       {
         if (h_ != 0)
           dec();
