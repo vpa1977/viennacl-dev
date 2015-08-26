@@ -41,6 +41,7 @@ option(ENABLE_OPENMP "Use OpenMP acceleration" OFF)
 
 option(ENABLE_ASAN "Build with address sanitizer if available" OFF)
 
+option(ENABLE_HSA "Use HSA backed" OFF)
 
 
 # If you want to build the examples that use boost::numeric::ublas, enable
@@ -155,6 +156,39 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
 endif()
 
+if (ENABLE_HSA) 
+	set(ENV_HSA_ROOT "$ENV{HSA_ROOT}")
+        set(HSA_LIB_SEARCH_PATH
+          "${ENV_HSA_ROOT}/lib")
+	set(HSA_INC_SEARCH_PATH
+          "${ENV_HSA_ROOT}/include")
+	  find_path(
+    		HSA_INCLUDE_DIR
+		NAMES hsa.h
+		PATHS "${HSA_INC_SEARCH_PATH}"
+         )
+	find_library(
+	    HSA_LIBRARY
+	    NAMES hsa-runtime64
+	    PATHS "${HSA_LIB_SEARCH_PATH}"
+	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
+	    )
+	find_library(
+	    HSA_LIBRARY_EXT
+	    NAMES hsa-runtime-ext64
+	    PATHS "${HSA_LIB_SEARCH_PATH}"
+	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
+	    )
+	find_library(
+	    HSA_KMT
+	    NAMES hsakmt
+	    PATHS "${HSA_LIB_SEARCH_PATH}"
+	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
+	    )
+	SET(CMAKE_LIBRARY_PATH "${CMAKE_LIBRARY_PATH}" ${HSA_LIB_SEARCH_PATH})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIENNACL_WITH_HSA -std=c++11")
+	include_directories( ${HSA_INCLUDE_DIR} )
+endif()
 
 # Export
 ########

@@ -34,6 +34,12 @@ else(ENABLE_CUDA)
   endif(ENABLE_OPENCL)
 endif(ENABLE_CUDA)
 
+if (ENABLE_HSA)
+  target_link_libraries(viennacl ${HSA_LIBRARY})
+  target_link_libraries(viennacl ${HSA_LIBRARY_EXT})
+  target_link_libraries(viennacl ${HSA_KMT})
+endif(ENABLE_HSA)	
+
 # Special linkage for OpenMP under MinGW:
 if(ENABLE_OPENMP AND MINGW)
    target_link_libraries(viennacl gomp)

@@ -1,2 +1,16 @@
 build
 .*.swp
+*.make
+link.txt
+/CMakeCache.txt
+/CMakeFiles/
+/CTestTestfile.cmake
+/FindOpenCL.cmake
+/Makefile
+/ViennaCLConfigVersion.cmake
+/DartConfiguration.tcl
+/ViennaCLConfig.cmake
+/cmake_install.cmake
+/compile_commands.json
+/doc/
+/examples/CMakeFiles/
