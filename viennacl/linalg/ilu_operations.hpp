@@ -37,6 +37,9 @@
 #ifdef VIENNACL_WITH_OPENCL
   #include "viennacl/linalg/opencl/ilu_operations.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/ilu_operations.hpp"
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/ilu_operations.hpp"
@@ -65,6 +68,11 @@ void extract_L(compressed_matrix<NumericT> const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::extract_L(A, L);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::extract_L(A, L);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -96,6 +104,11 @@ void icc_scale(compressed_matrix<NumericT> const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::icc_scale(A, L);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::icc_scale(A, L);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -130,6 +143,11 @@ void icc_chow_patel_sweep(compressed_matrix<NumericT>       & L,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::icc_chow_patel_sweep(L, aij_L);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::icc_chow_patel_sweep(L, aij_L);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -167,6 +185,11 @@ void extract_LU(compressed_matrix<NumericT> const & A,
     viennacl::linalg::opencl::extract_LU(A, L, U);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::extract_LU(A, L, U);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::extract_LU(A, L, U);
@@ -198,6 +221,11 @@ void ilu_scale(compressed_matrix<NumericT> const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::ilu_scale(A, L, U);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::ilu_scale(A, L, U);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -284,6 +312,11 @@ void ilu_chow_patel_sweep(compressed_matrix<NumericT>       & L,
     viennacl::linalg::opencl::ilu_chow_patel_sweep(L, aij_L, U_trans, aij_U_trans);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::ilu_chow_patel_sweep(L, aij_L, U_trans, aij_U_trans);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::ilu_chow_patel_sweep(L, aij_L, U_trans, aij_U_trans);
@@ -314,6 +347,11 @@ void ilu_form_neumann_matrix(compressed_matrix<NumericT> & R,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::ilu_form_neumann_matrix(R, diag_R);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::ilu_form_neumann_matrix(R, diag_R);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:

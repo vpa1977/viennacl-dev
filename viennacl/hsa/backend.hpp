@@ -113,7 +113,7 @@ namespace viennacl
        * @param queues   A map of queues for each device
        */
       static void setup_context(long i,
-              hsa_environment c,
+              hsa_environment* c,
               std::vector<hsa_agent_t> const & devices,
               std::map< uint64_t, std::vector< hsa_queue_t* > > const & queues)
       {
@@ -152,7 +152,7 @@ namespace viennacl
        * @param devices A vector of OpenCL device-IDs that should be added to the context
        * @param queue   One queue per device
        */
-      static void setup_context(long i, hsa_environment c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queue)
+      static void setup_context(long i, hsa_environment* c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queue)
       {
         assert(devices.size() == queue.size() && bool("ViennaCL expects one queue per device!"));
 
@@ -246,7 +246,7 @@ namespace viennacl
 
     /** @brief Convenience function for setting up a context in ViennaCL from an existing OpenCL context */
     inline void setup_context(long i,
-            hsa_environment c,
+            hsa_environment*c,
             std::vector<hsa_agent_t> const & devices,
             std::map< uint64_t, std::vector<hsa_queue_t*> > const & queues)
     {
@@ -254,13 +254,13 @@ namespace viennacl
     }
 
     /** @brief Convenience function for setting up a context in ViennaCL from an existing OpenCL context */
-    inline void setup_context(long i, hsa_environment c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queues)
+    inline void setup_context(long i, hsa_environment* c, std::vector<hsa_agent_t> const & devices, std::vector<hsa_queue_t*> const & queues)
     {
       viennacl::hsa::backend<>::setup_context(i, c, devices, queues);
     }
 
     /** @brief Convenience function for setting up a context in ViennaCL from an existing OpenCL context */
-    inline void setup_context(long i, hsa_environment c, hsa_agent_t d, hsa_queue_t* q)
+    inline void setup_context(long i, hsa_environment* c, hsa_agent_t d, hsa_queue_t* q)
     {
       std::vector<hsa_agent_t> devices(1);
       std::vector<hsa_queue_t*> queues(1);

@@ -36,7 +36,7 @@ License:         MIT (X11), see file LICENSE in the base directory
 #include "viennacl/device_specific/utils.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/forwards.h"
-
+#include "viennacl/device.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -85,7 +85,7 @@ private:
     return N;
   }
 
-  int check_invalid_impl(viennacl::ocl::device const & /*device*/) const
+  int check_invalid_impl(viennacl::device_capabilities const & /*device*/) const
   {
     if (p_.A_fetching_policy!=FETCH_FROM_LOCAL && p_.B_fetching_policy!=FETCH_FROM_LOCAL&& (p_.local_fetch_0!=0 || p_.local_fetch_1!=0))
       return TEMPLATE_GLOBAL_MEMORY_REQUIRES_ZERO_LOCAL_FETCH;

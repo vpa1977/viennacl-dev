@@ -32,6 +32,9 @@
 #ifdef VIENNACL_WITH_OPENCL
   #include "viennacl/linalg/opencl/misc_operations.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/misc_operations.hpp"
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/misc_operations.hpp"
@@ -68,6 +71,11 @@ namespace viennacl
           case viennacl::OPENCL_MEMORY:
             viennacl::linalg::opencl::detail::level_scheduling_substitute(vec, row_index_array, row_buffer, col_buffer, element_buffer, num_rows);
             break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+            viennacl::linalg::hsa::detail::level_scheduling_substitute(vec, row_index_array, row_buffer, col_buffer, element_buffer, num_rows);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
           case viennacl::CUDA_MEMORY:

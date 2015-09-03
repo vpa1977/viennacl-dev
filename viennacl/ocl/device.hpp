@@ -37,6 +37,7 @@
 #include "viennacl/ocl/device_utils.hpp"
 #include "viennacl/ocl/handle.hpp"
 #include "viennacl/ocl/error.hpp"
+#include "viennacl/device.hpp"
 
 namespace viennacl
 {
@@ -46,7 +47,7 @@ namespace ocl
 /** @brief A class representing a compute device (e.g. a GPU)
 *
 */
-class device
+class device : public viennacl::device_capabilities
 {
 public:
   explicit device() : device_(0) { flush_cache(); }
@@ -393,7 +394,7 @@ public:
   }
 
   /** @brief The number of parallel compute cores on the OpenCL device. The minimum value is 1. */
-  cl_uint max_compute_units() const
+  size_t max_compute_units() const
   {
     if (!max_compute_units_valid_)
     {
@@ -563,7 +564,7 @@ public:
   }
 
   /** @brief Device name string. */
-  std::string name() const
+  const std::string name() const
   {
     if (!name_valid_)
     {
@@ -571,6 +572,8 @@ public:
       VIENNACL_ERR_CHECK(err);
       name_valid_ = true;
     }
+
+
     return name_;
   }
 
@@ -890,7 +893,7 @@ public:
       *
       * Currently supported values are one of or a combination of: CL_DEVICE_TYPE_CPU, CL_DEVICE_TYPE_GPU, CL_DEVICE_TYPE_ACCELERATOR, or CL_DEVICE_TYPE_DEFAULT.
       */
-  cl_device_type type() const
+  int type() const
   {
     if (!type_valid_)
     {
@@ -898,23 +901,25 @@ public:
       VIENNACL_ERR_CHECK(err);
       type_valid_ = true;
     }
-    return type_;
+    return (int)type_;
   }
 
   /** @brief Vendor name string. */
-  std::string vendor() const
+  const std::string vendor() const
   {
+        // get some basic data
     if (!vendor_valid_)
     {
       cl_int err = clGetDeviceInfo(device_, CL_DEVICE_VENDOR, sizeof(char) * 256, static_cast<void *>(vendor_), NULL);
       VIENNACL_ERR_CHECK(err);
       vendor_valid_ = true;
     }
+
     return vendor_;
   }
 
   /** @brief A unique device vendor identifier. An example of a unique device identifier could be the PCIe ID. */
-  cl_uint vendor_id() const
+  int vendor_id() const
   {
     if (!vendor_id_valid_)
     {
@@ -938,7 +943,7 @@ public:
   }
 
   /** @brief Vendor name string. */
-  std::string driver_version() const
+  const std::string driver_version() const
   {
     if (!driver_version_valid_)
     {
@@ -946,6 +951,7 @@ public:
       VIENNACL_ERR_CHECK(err);
       driver_version_valid_ = true;
     }
+
     return driver_version_;
   }
 
@@ -964,7 +970,7 @@ public:
   }
 
   /** @brief ViennaCL convenience function: Returns the device extension which enables double precision (usually cl_khr_fp64, but AMD used cl_amd_fp64 in the past) */
-  std::string double_support_extension() const
+  const std::string double_support_extension() const
   {
     std::string ext = extensions();
 
@@ -1286,6 +1292,7 @@ private:
     vendor_id_valid_        = false;
     version_valid_          = false;
     driver_version_valid_   = false;
+    
   }
 
   cl_device_id    device_;

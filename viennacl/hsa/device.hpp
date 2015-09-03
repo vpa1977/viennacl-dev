@@ -36,6 +36,7 @@
 #include "viennacl/ocl/device_utils.hpp" // including ocl type because it will require changing all maps
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/error.hpp"
+#include "viennacl/device.hpp"
 
 namespace viennacl
 {
@@ -45,7 +46,7 @@ namespace viennacl
     /** @brief A class representing a compute device (e.g. a GPU)
      *  @TODO: update device definition to query info properly 
      */
-    class device
+    class device : public viennacl::device_capabilities
     {
       std::string NOT_IMPLEMENTED;
     public:
@@ -77,17 +78,17 @@ namespace viennacl
         return device_;
       }
 
-      const std::string& name() const
+      const std::string name() const
       {
         return name_;
       }
 
-      const std::string& driver_version() const
+      const std::string driver_version() const
       {
         return NOT_IMPLEMENTED;
       }
 
-      const std::string& vendor() const
+      const std::string vendor() const
       {
         return NOT_IMPLEMENTED;
       }

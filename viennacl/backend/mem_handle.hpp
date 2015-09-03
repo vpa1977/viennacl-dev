@@ -36,6 +36,9 @@
 #include "viennacl/backend/cuda.hpp"
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/backend/hsa.hpp"
+#endif
 
 namespace viennacl
 {
@@ -54,7 +57,12 @@ namespace detail
 #ifdef VIENNACL_WITH_CUDA
     static memory_types mem_type = CUDA_MEMORY;
 #elif defined(VIENNACL_WITH_OPENCL)
+#if defined (VIENNACL_WITH_HSA)
+    static memory_types mem_type = HSA_MEMORY;
+#else
     static memory_types mem_type = OPENCL_MEMORY;
+#endif
+
 #else
     static memory_types mem_type = MAIN_MEMORY;
 #endif
@@ -107,6 +115,15 @@ public:
   viennacl::ocl::handle<cl_mem> const & opencl_handle() const { return opencl_handle_; }
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+  /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
+  ram_handle_type       & hsa_handle()       { return ram_handle_; }
+  /** @brief Returns the handle to a buffer in CPU RAM. NULL is returned if no such buffer has been allocated. */
+ ram_handle_type const & hsa_handle() const { return ram_handle_; }
+
+#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
   /** @brief Returns the handle to a CUDA buffer. The handle contains NULL if no such buffer has been allocated. */
   cuda_handle_type       & cuda_handle()       { return cuda_handle_; }
@@ -144,6 +161,15 @@ public:
         throw memory_exception("compiled without CUDA suppport!");
 #endif
       }
+      else if (active_handle_ == HSA_MEMORY)
+      {
+#ifdef VIENNACL_WITH_HSA
+        active_handle_ = new_id;
+#else
+        throw "compiled without HSA suppport!";
+#endif
+
+      }
       else
         throw memory_exception("invalid new memory region!");
     }
@@ -166,6 +192,10 @@ public:
 #ifdef VIENNACL_WITH_CUDA
     case CUDA_MEMORY:
       return cuda_handle_.get() == other.cuda_handle_.get();
+#endif
+#ifdef VIENNACL_WITH_HSA
+    case HSA_MEMORY:
+    	return ram_handle_.get() == other.ram_handle_.get();
 #endif
     default: break;
     }
@@ -238,6 +268,9 @@ private:
 #ifdef VIENNACL_WITH_OPENCL
   viennacl::ocl::handle<cl_mem> opencl_handle_;
 #endif
+  
+ 
+  
 #ifdef VIENNACL_WITH_CUDA
   cuda_handle_type        cuda_handle_;
 #endif

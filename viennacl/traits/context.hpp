@@ -43,6 +43,10 @@ viennacl::context context(T const & t)
   if (traits::active_handle_id(t) == OPENCL_MEMORY)
     return viennacl::context(traits::opencl_handle(t).context());
 #endif
+#ifdef VIENNACL_WITH_HSA
+  if (traits::active_handle_id(t) == HSA_MEMORY)
+    return viennacl::context(viennacl::hsa::current_context());
+#endif
 
   return viennacl::context(traits::active_handle_id(t));
 }
@@ -54,6 +58,12 @@ inline viennacl::context context(viennacl::backend::mem_handle const & h)
   if (h.get_active_handle_id() == OPENCL_MEMORY)
     return viennacl::context(h.opencl_handle().context());
 #endif
+  
+#ifdef VIENNACL_WITH_HSA
+  if (h.get_active_handle_id() == OPENCL_MEMORY)
+    return viennacl::context(viennacl::hsa::current_context());
+#endif
+
 
   return viennacl::context(h.get_active_handle_id());
 }

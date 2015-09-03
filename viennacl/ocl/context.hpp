@@ -54,9 +54,13 @@ namespace ocl
 */
 class context
 {
+  
   typedef std::vector< tools::shared_ptr<viennacl::ocl::program> >   program_container_type;
 
 public:
+  typedef device device_type;
+public:  
+  
   context() : initialized_(false),
     device_type_(CL_DEVICE_TYPE_DEFAULT),
     current_device_id_(0),

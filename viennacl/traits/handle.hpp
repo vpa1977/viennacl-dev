@@ -203,6 +203,45 @@ viennacl::ocl::context & opencl_context(T const & obj)
 }
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+
+typedef  viennacl::tools::shared_ptr<char> hsa_handle_type;
+/** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Non-const version. */
+template<typename T>
+hsa_handle_type & hsa_handle(T & obj)
+{
+  return viennacl::traits::handle(obj).hsa_handle();
+}
+
+/** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Const version. */
+template<typename T>
+hsa_handle_type const & hsa_handle(T const & obj)
+{
+  return viennacl::traits::handle(obj).hsa_handle();
+}
+
+inline cl_char   hsa_handle(char            val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_short  hsa_handle(short           val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_int    hsa_handle(int             val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_long   hsa_handle(long            val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_uchar  hsa_handle(unsigned char   val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_ushort hsa_handle(unsigned short  val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_uint   hsa_handle(unsigned int    val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline cl_ulong  hsa_handle(unsigned long   val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline float     hsa_handle(float           val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+inline double    hsa_handle(double          val) { return val; }  //for unification purposes when passing CPU-scalars to kernels
+
+
+
+template<typename T>
+viennacl::hsa::context & hsa_context(T const & /*obj*/)
+{
+  return viennacl::hsa::current_context(); // there can be only 1 hsa context at the moment
+}
+
+#endif
+
+
 //
 // OpenCL context extraction
 //

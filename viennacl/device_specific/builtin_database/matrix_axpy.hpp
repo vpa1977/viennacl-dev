@@ -105,7 +105,7 @@ inline database_type<matrix_axpy_template::parameters_type> init_matrix_axpy()
 static database_type<matrix_axpy_template::parameters_type> matrix_axpy = init_matrix_axpy();
 
 template<class NumericT>
-matrix_axpy_template::parameters_type const & matrix_axpy_params(ocl::device const & device)
+matrix_axpy_template::parameters_type const & matrix_axpy_params(viennacl::device_capabilities const & device)
 {
   return get_parameters<NumericT>(matrix_axpy, device);
 }

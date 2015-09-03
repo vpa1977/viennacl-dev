@@ -44,8 +44,8 @@ namespace opencl
 namespace kernels
 {
 
-template<typename NumericT, typename ScalarT>
-static void generate_inner_prod_impl(device_specific::execution_handler & handler, std::string const & prefix, device_specific::reduction_template::parameters_type const & parameters, vcl_size_t vector_num,
+template<typename NumericT, typename ScalarT, typename Context= viennacl::ocl::context>
+static void generate_inner_prod_impl(device_specific::execution_handler<Context> & handler, std::string const & prefix, device_specific::reduction_template::parameters_type const & parameters, vcl_size_t vector_num,
                                      viennacl::vector<NumericT> const * x, viennacl::vector<NumericT> const * y, ScalarT const* s)
 {
   namespace ds = device_specific;
@@ -65,7 +65,7 @@ class vector
 private:
 
   template<typename ScalarT1, typename ScalarT2>
-  static void generate_avbv_impl2(device_specific::execution_handler & handler, std::string const & prefix, device_specific::vector_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_avbv_impl2(device_specific::execution_handler<Context> & handler, std::string const & prefix, device_specific::vector_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::vector_base<NumericT> const * x, viennacl::vector_base<NumericT> const * y, ScalarT1 const * a,
                                  viennacl::vector_base<NumericT> const * z, ScalarT2 const * b)
   {
@@ -94,7 +94,7 @@ private:
   }
 
   template<typename ScalarT>
-  static void generate_avbv_impl(device_specific::execution_handler & handler, std::string const & prefix, device_specific::vector_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_avbv_impl(device_specific::execution_handler<Context> & handler, std::string const & prefix, device_specific::vector_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::vector_base<NumericT> const * x, viennacl::vector_base<NumericT> const * y, ScalarT const * ha, viennacl::scalar<NumericT> const * da,
                                  viennacl::vector_base<NumericT> const * z, ScalarT const * hb, viennacl::scalar<NumericT> const * db)
   {
@@ -110,18 +110,18 @@ private:
   }
 
 public:
-  static device_specific::execution_handler & execution_handler(Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
       viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
-      viennacl::ocl::device const & device = ctx.current_device();
-      handlers_map.insert(std::make_pair(h, ds::execution_handler(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector", ctx, device)));
-      ds::execution_handler & handler = at(handlers_map, h);
+      typename Context::device_type const & device = ctx.current_device();
+      handlers_map.insert(std::make_pair(h, ds::execution_handler<Context>(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector", ctx, device)));
+      ds::execution_handler<Context> & handler = at(handlers_map, h);
 
       viennacl::vector<NumericT> x;
       viennacl::vector<NumericT> y;
@@ -145,7 +145,7 @@ public:
       generate_inner_prod_impl(handler, "inner_prod", reduction_params, 1, &x, &y, &da);
 
       handler.add("norm_1", ds::reduction_template(reduction_params), scheduler::preset::norm_1(&da, &x));
-      bool is_float_or_double = is_floating_point<NumericT>::value;
+      bool is_float_or_double = viennacl::is_floating_point<NumericT>::value;
       if (is_float_or_double) //BIND_TO_HANDLE for optimization (will load x once in the internal inner product)
         handler.add("norm_2", ds::reduction_template(reduction_params, ds::BIND_TO_HANDLE), scheduler::preset::norm_2(&da, &x));
       handler.add("norm_inf", ds::reduction_template(reduction_params), scheduler::preset::norm_inf(&da, &x));
@@ -164,9 +164,9 @@ template<typename NumericT, typename Context= viennacl::ocl::context >
 class vector_multi_inner_prod
 {
 public:
-  static device_specific::execution_handler & execution_handler(Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
@@ -174,9 +174,9 @@ public:
 
       namespace ds = viennacl::device_specific;
 
-      viennacl::ocl::device const & device = ctx.current_device();
-      handlers_map.insert(std::make_pair(h, ds::execution_handler(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector_multi_inner_prod", ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, h);
+      typename Context::device_type const & device = ctx.current_device();
+      handlers_map.insert(std::make_pair(h, ds::execution_handler<Context>(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector_multi_inner_prod", ctx, device)));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, h);
 
       ds::reduction_template::parameters_type reduction_params = ds::builtin_database::reduction_params<NumericT>(device);
 
@@ -203,9 +203,9 @@ struct vector_element
 {
 
 public:
-  static device_specific::execution_handler & execution_handler(Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
@@ -216,9 +216,10 @@ public:
       using device_specific::tree_parsing::operator_string;
 
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
-      viennacl::ocl::device const & device = ctx.current_device();
-      handlers_map.insert(std::make_pair(h, ds::execution_handler(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector_element", ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, h);
+      
+      typename Context::device_type const & device = ctx.current_device();
+      handlers_map.insert(std::make_pair(h, ds::execution_handler<Context>(viennacl::ocl::type_to_string<NumericT>::apply() + "_vector_element", ctx, device)));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, h);
       ds::vector_axpy_template::parameters_type vector_axpy_params = ds::builtin_database::vector_axpy_params<NumericT>(device);
 
       viennacl::vector<NumericT> x;

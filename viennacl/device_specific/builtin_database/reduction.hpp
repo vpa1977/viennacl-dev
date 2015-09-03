@@ -106,7 +106,7 @@ inline database_type<reduction_template::parameters_type> init_reduction()
 static database_type<reduction_template::parameters_type> reduction = init_reduction();
 
 template<class NumericT>
-reduction_template::parameters_type const & reduction_params(ocl::device const & device)
+reduction_template::parameters_type const & reduction_params(viennacl::device_capabilities const & device)
 {
   return get_parameters<NumericT>(reduction, device);
 }

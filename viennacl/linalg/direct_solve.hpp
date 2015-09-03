@@ -34,6 +34,9 @@
 #ifdef VIENNACL_WITH_OPENCL
   #include "viennacl/linalg/opencl/direct_solve.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/direct_solve.hpp"
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/direct_solve.hpp"
@@ -73,6 +76,11 @@ namespace detail
         viennacl::linalg::opencl::inplace_solve(A, const_cast<matrix_base<NumericT> &>(B), SolverTagT());
         break;
   #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+        viennacl::linalg::hsa::inplace_solve(A, const_cast<matrix_base<NumericT> &>(B), SolverTagT());
+break;
+#endif
   #ifdef VIENNACL_WITH_CUDA
       case viennacl::CUDA_MEMORY:
         viennacl::linalg::cuda::inplace_solve(A, const_cast<matrix_base<NumericT> &>(B), SolverTagT());
@@ -108,6 +116,11 @@ namespace detail
         viennacl::linalg::opencl::inplace_solve(mat, const_cast<vector_base<NumericT> &>(vec), SolverTagT());
         break;
   #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+        viennacl::linalg::hsa::inplace_solve(mat, const_cast<vector_base<NumericT> &>(vec), SolverTagT());
+break;
+#endif
   #ifdef VIENNACL_WITH_CUDA
       case viennacl::CUDA_MEMORY:
         viennacl::linalg::cuda::inplace_solve(mat, const_cast<vector_base<NumericT> &>(vec), SolverTagT());

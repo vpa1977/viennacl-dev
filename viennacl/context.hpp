@@ -27,6 +27,7 @@
 #include <assert.h>
 #include "viennacl/forwards.h"
 #include "viennacl/ocl/forwards.h"
+#include "viennacl/hsa/forwards.h"
 #include "viennacl/backend/mem_handle.hpp"
 
 namespace viennacl
@@ -47,6 +48,14 @@ public:
     else
       ocl_context_ptr_ = NULL;
 #endif
+
+#ifdef VIENNACL_WITH_HSA
+    if (mem_type_ == HSA_MEMORY)
+      hsa_context_ptr_ = &viennacl::hsa::current_context();
+    else
+      hsa_context_ptr_ = NULL;
+#endif
+
   }
 
   explicit context(viennacl::memory_types mtype) : mem_type_(mtype)
@@ -59,6 +68,14 @@ public:
     else
       ocl_context_ptr_ = NULL;
 #endif
+
+#ifdef VIENNACL_WITH_HSA
+    if (mem_type_ == HSA_MEMORY)
+      hsa_context_ptr_ = &viennacl::hsa::current_context();
+    else
+      hsa_context_ptr_ = NULL;
+#endif
+
   }
 
 #ifdef VIENNACL_WITH_OPENCL
@@ -71,6 +88,16 @@ public:
   }
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+  context(viennacl::hsa::context const & ctx) : mem_type_(HSA_MEMORY), hsa_context_ptr_(&ctx) {}
+
+  viennacl::hsa::context const & hsa_context() const
+  {
+    assert(mem_type_ == HSA_MEMORY && bool("Context type is not HSA"));
+    return *hsa_context_ptr_;
+  }
+#endif
+
   // TODO: Add CUDA and OpenMP contexts
 
   viennacl::memory_types  memory_type() const { return mem_type_; }
@@ -79,6 +106,9 @@ private:
   viennacl::memory_types   mem_type_;
 #ifdef VIENNACL_WITH_OPENCL
   viennacl::ocl::context const * ocl_context_ptr_;
+#endif
+#ifdef VIENNACL_WITH_HSA
+  viennacl::hsa::context const * hsa_context_ptr_;
 #endif
 };
 

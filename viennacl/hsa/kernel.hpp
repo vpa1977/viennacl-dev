@@ -33,6 +33,8 @@
 #include "viennacl/hsa/local_mem.hpp"
 #include "viennacl/tools/shared_ptr.hpp"
 
+#include <string.h>
+
 namespace viennacl
 {
   namespace hsa

@@ -34,7 +34,7 @@
 
 #include "viennacl/device_specific/templates/template_base.hpp"
 #include "viennacl/device_specific/templates/utils.hpp"
-
+#include "viennacl/device.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -61,7 +61,7 @@ private:
     return p_.local_size_0;
   }
 
-  int check_invalid_impl(viennacl::ocl::device const & /*dev*/) const
+  int check_invalid_impl(viennacl::device_capabilities const & /*dev*/) const
   {
     if (p_.fetching_policy==FETCH_FROM_LOCAL)
       return TEMPLATE_INVALID_FETCHING_POLICY_TYPE;

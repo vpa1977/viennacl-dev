@@ -24,7 +24,7 @@
 */
 
 #include "viennacl/ocl/device_utils.hpp"
-
+#include "viennacl/device.hpp"
 #include "viennacl/scheduler/forwards.h"
 
 #include "viennacl/device_specific/forwards.h"
@@ -109,7 +109,7 @@ public:
 * There are built-in defaults for CPUs, Accelerators, GPUs.
 */
 template<class NumericT, class ParamT>
-inline ParamT const & get_parameters(database_type<ParamT> const & database, viennacl::ocl::device const & device)
+inline ParamT const & get_parameters(database_type<ParamT> const & database, viennacl::device_capabilities const & device)
 {
   scheduler::statement_node_numeric_type numeric_type = scheduler::statement_node_numeric_type(scheduler::result_of::numeric_type_id<NumericT>::value);
 

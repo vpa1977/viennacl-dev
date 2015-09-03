@@ -35,12 +35,13 @@ namespace viennacl
 {
 namespace device_specific
 {
-
+ 
+  template<class Context = viennacl::ocl::context>
 class execution_handler
 {
 public:
   typedef std::map< std::string, tools::shared_ptr<template_base> > container_type;
-
+  typedef typename  Context::device_type context_device_type;
 private:
   std::string append_prefix(std::string const & str)
   {
@@ -60,7 +61,7 @@ private:
   }
 
 public:
-  execution_handler(std::string const & program_name_base, viennacl::ocl::context & ctx, viennacl::ocl::device const & device, bool force_recompilation = false) : ctx_(ctx), device_(device), program_names_(2)
+  execution_handler(std::string const & program_name_base, Context & ctx, context_device_type const & device, bool force_recompilation = false) : ctx_(ctx), device_(device), program_names_(2)
   {
     lazy_programs_.reserve(2);
     init_program_compiler(program_name_base + "_0", force_recompilation);
@@ -90,8 +91,9 @@ public:
   }
 
 private:
-  viennacl::ocl::context & ctx_;
-  viennacl::ocl::device const & device_;
+  
+  Context & ctx_;
+  context_device_type const & device_;
   container_type kernels_;
   std::vector<std::string> program_names_;
   std::vector<lazy_program_compiler> lazy_programs_;

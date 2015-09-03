@@ -36,7 +36,7 @@
 #include "viennacl/device_specific/templates/utils.hpp"
 
 #include "viennacl/tools/tools.hpp"
-
+#include "viennacl/device.hpp"
 #include "viennacl/scheduler/io.hpp"
 
 namespace viennacl
@@ -58,7 +58,7 @@ struct row_wise_reduction_parameters : public template_base::parameters_type
 class row_wise_reduction_template : public template_base_impl<row_wise_reduction_template, row_wise_reduction_parameters>
 {
 private:
-  virtual int check_invalid_impl(viennacl::ocl::device const & /*dev*/) const
+  virtual int check_invalid_impl(viennacl::device_capabilities const & /*dev*/) const
   {
     if (p_.fetch_policy==FETCH_FROM_LOCAL)
       return TEMPLATE_INVALID_FETCHING_POLICY_TYPE;

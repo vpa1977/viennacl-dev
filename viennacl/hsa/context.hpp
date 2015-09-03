@@ -54,8 +54,10 @@ namespace viennacl
     {
       typedef std::vector< tools::shared_ptr<viennacl::hsa::program> > program_container_type;
 
-    public:
+public:
+  typedef device device_type;
 
+    public:
       context() : initialized_(false),
       device_type_(HSA_DEVICE_TYPE_GPU),
       current_device_id_(0),

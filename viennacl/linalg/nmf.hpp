@@ -70,6 +70,11 @@ namespace viennacl
           viennacl::linalg::opencl::nmf(V,W,H,conf);
           break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+          viennacl::linalg::hsa::nmf(V,W,H,conf);
+break;
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
           case viennacl::CUDA_MEMORY:

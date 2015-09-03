@@ -33,6 +33,9 @@
 #ifdef VIENNACL_WITH_OPENCL
   #include "viennacl/linalg/opencl/amg_operations.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/amg_operations.hpp"
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/amg_operations.hpp"
@@ -60,6 +63,11 @@ void amg_influence(compressed_matrix<NumericT> const & A, AMGContextT & amg_cont
       viennacl::linalg::opencl::amg::amg_influence(A, amg_context, tag);
       break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+      viennacl::linalg::hsa::amg::amg_influence(A, amg_context, tag);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
     case viennacl::CUDA_MEMORY:
       viennacl::linalg::cuda::amg::amg_influence(A, amg_context, tag);
@@ -85,6 +93,11 @@ void amg_coarse(compressed_matrix<NumericT> const & A, AMGContextT & amg_context
     case viennacl::OPENCL_MEMORY:
       viennacl::linalg::opencl::amg::amg_coarse(A, amg_context, tag);
       break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+      viennacl::linalg::hsa::amg::amg_coarse(A, amg_context, tag);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
     case viennacl::CUDA_MEMORY:
@@ -114,6 +127,11 @@ void amg_interpol(compressed_matrix<NumericT> const & A,
     case viennacl::OPENCL_MEMORY:
       viennacl::linalg::opencl::amg::amg_interpol(A, P, amg_context, tag);
       break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+      viennacl::linalg::hsa::amg::amg_interpol(A, P, amg_context, tag);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
     case viennacl::CUDA_MEMORY:
@@ -187,6 +205,11 @@ assign_to_dense(SparseMatrixType const & A,
       viennacl::linalg::opencl::amg::assign_to_dense(A, B);
       break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+      viennacl::linalg::hsa::amg::assign_to_dense(A, B);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
     case viennacl::CUDA_MEMORY:
       viennacl::linalg::cuda::amg::assign_to_dense(A, B);
@@ -216,6 +239,11 @@ void smooth_jacobi(unsigned int iterations,
     case viennacl::OPENCL_MEMORY:
       viennacl::linalg::opencl::amg::smooth_jacobi(iterations, A, x, x_backup, rhs_smooth, weight);
       break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+      viennacl::linalg::hsa::amg::smooth_jacobi(iterations, A, x, x_backup, rhs_smooth, weight);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
     case viennacl::CUDA_MEMORY:

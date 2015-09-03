@@ -38,7 +38,7 @@
 #include "viennacl/device_specific/mapped_objects.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/device_specific/utils.hpp"
-
+#include "viennacl/device.hpp"
 namespace viennacl
 {
 namespace device_specific
@@ -487,7 +487,7 @@ public:
 
   virtual ~template_base(){ }
 
-  std::vector<std::string> generate(std::string const & kernel_prefix, statements_container const & statements, viennacl::ocl::device const & device)
+  std::vector<std::string> generate(std::string const & kernel_prefix, statements_container const & statements, viennacl::device_capabilities const & device)
   {
     statements_container::data_type::const_iterator sit;
     std::vector<mapping_type>::iterator mit;
@@ -505,7 +505,7 @@ public:
   }
 
   /** @brief returns whether or not the profile has undefined behavior on particular device */
-  virtual int check_invalid(statements_container const & statements, viennacl::ocl::device const & device) const = 0;
+  virtual int check_invalid(statements_container const & statements, viennacl::device_capabilities const & device) const = 0;
 
   virtual void enqueue(std::string const & kernel_prefix, std::vector<lazy_program_compiler> & programs, statements_container const & statements) = 0;
 
@@ -519,7 +519,7 @@ template<class TemplateType, class ParametersType>
 class template_base_impl : public template_base
 {
 private:
-  virtual int check_invalid_impl(viennacl::ocl::device const & /*dev*/) const { return TEMPLATE_VALID; }
+  virtual int check_invalid_impl(viennacl::device_capabilities const & /*dev*/) const { return TEMPLATE_VALID; }
 
   virtual unsigned int n_lmem_elements() const { return 0; }
 
@@ -540,7 +540,7 @@ public:
   }
 
   /** @brief returns whether or not the profile has undefined behavior on particular device */
-  int check_invalid(statements_container const & statements, viennacl::ocl::device const & device) const
+  int check_invalid(statements_container const & statements, viennacl::device_capabilities const & device) const
   {
     using namespace viennacl::tools;
 

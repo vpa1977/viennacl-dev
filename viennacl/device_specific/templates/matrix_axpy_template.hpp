@@ -31,7 +31,7 @@
 #include "viennacl/device_specific/mapped_objects.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/device_specific/utils.hpp"
-
+#include "viennacl/device.hpp"
 #include "viennacl/device_specific/templates/template_base.hpp"
 
 #include "viennacl/tools/tools.hpp"
@@ -57,7 +57,7 @@ public:
 class matrix_axpy_template : public template_base_impl<matrix_axpy_template, matrix_axpy_parameters_type>
 {
 private:
-  int check_invalid_impl(viennacl::ocl::device const & /*dev*/) const
+  int check_invalid_impl(viennacl::device_capabilities const & /*dev*/) const
   {
     if (p_.simd_width>1)
       return TEMPLATE_INVALID_SIMD_WIDTH;

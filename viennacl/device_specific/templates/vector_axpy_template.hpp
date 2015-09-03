@@ -36,7 +36,7 @@
 
 #include "viennacl/device_specific/templates/template_base.hpp"
 #include "viennacl/device_specific/templates/utils.hpp"
-
+#include "viennacl/device.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -60,7 +60,7 @@ public:
 class vector_axpy_template : public template_base_impl<vector_axpy_template, vector_axpy_parameters>
 {
 private:
-  virtual int check_invalid_impl(viennacl::ocl::device const & /*dev*/) const
+  virtual int check_invalid_impl(viennacl::device_capabilities const & /*dev*/) const
   {
     if (p_.fetching_policy==FETCH_FROM_LOCAL)
       return TEMPLATE_INVALID_FETCHING_POLICY_TYPE;

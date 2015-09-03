@@ -491,7 +491,7 @@ class matrix
 private:
 
   template<typename ScalarT1, typename ScalarT2>
-  static void generate_ambm_impl2(device_specific::execution_handler & handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_ambm_impl2(device_specific::execution_handler<Context>& handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::matrix_base<NumericT> const * x, viennacl::matrix_base<NumericT> const * y, ScalarT1 const * a,
                                  viennacl::matrix_base<NumericT> const * z, ScalarT2 const * b)
   {
@@ -521,7 +521,7 @@ private:
   }
 
   template<typename ScalarT>
-  static void generate_ambm_impl(device_specific::execution_handler & handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
+  static void generate_ambm_impl(device_specific::execution_handler<Context> & handler, std::string const & prefix, device_specific::matrix_axpy_template::parameters_type const & parameters, scheduler::operation_node_type ASSIGN_OP,
                                  viennacl::matrix_base<NumericT> const * x, viennacl::matrix_base<NumericT> const * y, ScalarT const * ha, viennacl::scalar<ScalarT> const * da,
                                  viennacl::matrix_base<NumericT> const * z, ScalarT const * hb, viennacl::scalar<ScalarT> const * db)
   {
@@ -538,9 +538,9 @@ private:
 
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
@@ -548,10 +548,10 @@ public:
       viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
-      viennacl::ocl::device const & device = ctx.current_device();
+      typename Context::device_type const & device = ctx.current_device();
       std::string program_name = viennacl::ocl::type_to_string<NumericT>::apply() + (is_row_major?"matrix_row":"matrix_col");
-      handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, key);
+      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context>(program_name, ctx, device)));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, key);
 
       ds::matrix_axpy_template::parameters_type matrix_axpy_params = ds::builtin_database::matrix_axpy_params<NumericT>(device);
       ds::vector_axpy_template::parameters_type vector_axpy_params = ds::builtin_database::vector_axpy_params<NumericT>(device);
@@ -606,9 +606,9 @@ struct matrix_element
 {
 
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
@@ -620,10 +620,10 @@ public:
       using device_specific::tree_parsing::operator_string;
 
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
-      viennacl::ocl::device const & device = ctx.current_device();
+      typename Context::device_type const & device = ctx.current_device();
       std::string program_name = viennacl::ocl::type_to_string<NumericT>::apply() + (is_row_major?"matrix_element_row":"matrix_element_col");
-      handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, key);
+      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context><Context>(program_name, ctx, device)));
+      ds::execution_handler<Context><Context> & handler = viennacl::device_specific::at(handlers_map, key);
       ds::matrix_axpy_template::parameters_type matrix_axpy_params = ds::builtin_database::matrix_axpy_params<NumericT>(device);
 
       tools::shared_ptr<viennacl::matrix_base<NumericT> > pA, pB, pC;
@@ -693,25 +693,25 @@ template<typename NumericT, typename Context = viennacl::ocl::context>
 class row_wise_reduction
 {
 public:
-  static device_specific::execution_handler & execution_handler(Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
     void* key = ctx.handle().get();
     if (handlers_map.find(key) == handlers_map.end())
     {
       viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
-      viennacl::ocl::device const & device = ctx.current_device();
+      
       std::string program_name = viennacl::ocl::type_to_string<NumericT>::apply() + "_matrix_row_wise";
-      handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, key);
+      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context>(program_name, ctx, ctx.current_device())));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, key);
 
       viennacl::matrix<NumericT, viennacl::column_major> A;
       viennacl::vector<NumericT> x;
       viennacl::vector<NumericT> y;
-      handler.add("mat_vec_T", ds::row_wise_reduction_template(ds::builtin_database::row_wise_reduction_params<NumericT>(device, 'T'), 'T'), scheduler::preset::mat_vec_prod(&A, true, &x, &y));
-      handler.add("mat_vec_N", ds::row_wise_reduction_template(ds::builtin_database::row_wise_reduction_params<NumericT>(device, 'N'), 'N'), scheduler::preset::mat_vec_prod(&A, false, &x, &y));
+      handler.add("mat_vec_T", ds::row_wise_reduction_template(ds::builtin_database::row_wise_reduction_params<NumericT>(ctx.current_device(), 'T'), 'T'), scheduler::preset::mat_vec_prod(&A, true, &x, &y));
+      handler.add("mat_vec_N", ds::row_wise_reduction_template(ds::builtin_database::row_wise_reduction_params<NumericT>(ctx.current_device(), 'N'), 'N'), scheduler::preset::mat_vec_prod(&A, false, &x, &y));
 
     }
     return viennacl::device_specific::at(handlers_map, key);
@@ -723,9 +723,9 @@ template<typename NumericT, typename Context = viennacl::ocl::context>
 class matrix_prod
 {
 public:
-  static device_specific::execution_handler & execution_handler(bool is_row_major, Context & ctx)
+  static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
@@ -733,10 +733,10 @@ public:
       viennacl::ocl::DOUBLE_PRECISION_CHECKER<NumericT, Context>::apply(ctx);
 
       namespace ds = viennacl::device_specific;
-      viennacl::ocl::device const & device = ctx.current_device();
+      typename Context::device_type const & device = ctx.current_device();
       std::string program_name = viennacl::ocl::type_to_string<NumericT>::apply() + (is_row_major?"_matrix_prod_row":"_matrix_prod_col");
-      handlers_map.insert(std::make_pair(key, ds::execution_handler(program_name, ctx, device)));
-      ds::execution_handler & handler = viennacl::device_specific::at(handlers_map, key);
+      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context>(program_name, ctx, device)));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, key);
 
       ds::matrix_product_template::parameters_type matrix_product_params_NN = ds::builtin_database::matrix_product_params<NumericT>(device, 'N', 'N');
       ds::matrix_product_template::parameters_type matrix_product_params_TN = ds::builtin_database::matrix_product_params<NumericT>(device, 'T', 'N');

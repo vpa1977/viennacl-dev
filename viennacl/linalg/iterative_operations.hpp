@@ -37,6 +37,9 @@
 #ifdef VIENNACL_WITH_OPENCL
   #include "viennacl/linalg/opencl/iterative_operations.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+  #include "viennacl/linalg/hsa/iterative_operations.hpp"
+#endif
 
 #ifdef VIENNACL_WITH_CUDA
   #include "viennacl/linalg/cuda/iterative_operations.hpp"
@@ -74,6 +77,11 @@ void pipelined_cg_vector_update(vector_base<NumericT> & result,
     viennacl::linalg::opencl::pipelined_cg_vector_update(result, alpha, p, r, Ap, beta, inner_prod_buffer);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_cg_vector_update(result, alpha, p, r, Ap, beta, inner_prod_buffer);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::pipelined_cg_vector_update(result, alpha, p, r, Ap, beta, inner_prod_buffer);
@@ -108,6 +116,11 @@ void pipelined_cg_prod(MatrixT const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::pipelined_cg_prod(A, p, Ap, inner_prod_buffer);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_cg_prod(A, p, Ap, inner_prod_buffer);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -148,6 +161,11 @@ void pipelined_bicgstab_update_s(vector_base<NumericT> & s,
     viennacl::linalg::opencl::pipelined_bicgstab_update_s(s, r, Ap, inner_prod_buffer, buffer_chunk_size, buffer_chunk_offset);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_bicgstab_update_s(s, r, Ap, inner_prod_buffer, buffer_chunk_size, buffer_chunk_offset);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::pipelined_bicgstab_update_s(s, r, Ap, inner_prod_buffer, buffer_chunk_size, buffer_chunk_offset);
@@ -185,6 +203,11 @@ void pipelined_bicgstab_vector_update(vector_base<NumericT> & result, NumericT a
     viennacl::linalg::opencl::pipelined_bicgstab_vector_update(result, alpha, p, omega, s, residual, As, beta, Ap, r0star, inner_prod_buffer, buffer_chunk_size);
     break;
   #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_bicgstab_vector_update(result, alpha, p, omega, s, residual, As, beta, Ap, r0star, inner_prod_buffer, buffer_chunk_size);
+break;
+#endif
   #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::pipelined_bicgstab_vector_update(result, alpha, p, omega, s, residual, As, beta, Ap, r0star, inner_prod_buffer, buffer_chunk_size);
@@ -222,6 +245,11 @@ void pipelined_bicgstab_prod(MatrixT const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::pipelined_bicgstab_prod(A, p, Ap, r0star, inner_prod_buffer, buffer_chunk_size, buffer_chunk_offset);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_bicgstab_prod(A, p, Ap, r0star, inner_prod_buffer, buffer_chunk_size, buffer_chunk_offset);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -264,6 +292,11 @@ void pipelined_gmres_normalize_vk(vector_base<T> & v_k,
     viennacl::linalg::opencl::pipelined_gmres_normalize_vk(v_k, residual, R_buffer, offset_in_R, inner_prod_buffer, r_dot_vk_buffer, buffer_chunk_size, buffer_chunk_offset);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_gmres_normalize_vk(v_k, residual, R_buffer, offset_in_R, inner_prod_buffer, r_dot_vk_buffer, buffer_chunk_size, buffer_chunk_offset);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::pipelined_gmres_normalize_vk(v_k, residual, R_buffer, offset_in_R, inner_prod_buffer, r_dot_vk_buffer, buffer_chunk_size, buffer_chunk_offset);
@@ -299,6 +332,11 @@ void pipelined_gmres_gram_schmidt_stage1(vector_base<T> const & device_krylov_ba
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::pipelined_gmres_gram_schmidt_stage1(device_krylov_basis, v_k_size, v_k_internal_size, k, vi_in_vk_buffer, buffer_chunk_size);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_gmres_gram_schmidt_stage1(device_krylov_basis, v_k_size, v_k_internal_size, k, vi_in_vk_buffer, buffer_chunk_size);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -338,6 +376,11 @@ void pipelined_gmres_gram_schmidt_stage2(vector_base<T> & device_krylov_basis,
     viennacl::linalg::opencl::pipelined_gmres_gram_schmidt_stage2(device_krylov_basis, v_k_size, v_k_internal_size, k, vi_in_vk_buffer, R_buffer, krylov_dim, inner_prod_buffer, buffer_chunk_size);
     break;
 #endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_gmres_gram_schmidt_stage2(device_krylov_basis, v_k_size, v_k_internal_size, k, vi_in_vk_buffer, R_buffer, krylov_dim, inner_prod_buffer, buffer_chunk_size);
+break;
+#endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::pipelined_gmres_gram_schmidt_stage2(device_krylov_basis, v_k_size, v_k_internal_size, k, vi_in_vk_buffer, R_buffer, krylov_dim, inner_prod_buffer, buffer_chunk_size);
@@ -370,6 +413,11 @@ void pipelined_gmres_update_result(vector_base<T> & result,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::pipelined_gmres_update_result(result, residual, krylov_basis, v_k_size, v_k_internal_size, coefficients, k);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_gmres_update_result(result, residual, krylov_basis, v_k_size, v_k_internal_size, coefficients, k);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -404,6 +452,11 @@ void pipelined_gmres_prod(MatrixType const & A,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::pipelined_gmres_prod(A, p, Ap, inner_prod_buffer);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::pipelined_gmres_prod(A, p, Ap, inner_prod_buffer);
+break;
 #endif
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:

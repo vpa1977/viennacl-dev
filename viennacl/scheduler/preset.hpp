@@ -18,8 +18,8 @@
    License:         MIT (X11), see file LICENSE in the base directory
 ============================================================================= */
 
-#include "viennacl/device_specific/forwards.h"
 #include "viennacl/meta/predicate.hpp"
+#include "viennacl/device_specific/forwards.h"
 #include "viennacl/scheduler/forwards.h"
 
 namespace viennacl

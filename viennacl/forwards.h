@@ -348,6 +348,7 @@ namespace viennacl
     , MAIN_MEMORY
     , OPENCL_MEMORY
     , CUDA_MEMORY
+    , HSA_MEMORY
   };
 
   namespace backend
@@ -1001,6 +1002,9 @@ namespace viennacl
 
   /** @brief OpenCL backend. Manages platforms, contexts, buffers, kernels, etc. */
   namespace ocl {}
+  
+    /** @brief HSA backend. Manages platforms, contexts, buffers, kernels, etc. */
+  namespace hsa {}
 
   /** @brief Namespace containing many meta-functions. */
   namespace result_of {}

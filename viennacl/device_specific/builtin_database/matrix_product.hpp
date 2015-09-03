@@ -221,7 +221,7 @@ static database_type<matrix_product_template::parameters_type> matrix_product_N_
 static database_type<matrix_product_template::parameters_type> matrix_product_T_T = init_matrix_product_T_T();
 
 template<class NumericT>
-matrix_product_template::parameters_type const & matrix_product_params(ocl::device const & device, char A_trans, char B_trans)
+matrix_product_template::parameters_type const & matrix_product_params(viennacl::device_capabilities const & device, char A_trans, char B_trans)
 {
   assert(A_trans=='N' || A_trans=='T');
   assert(B_trans=='N' || B_trans=='T');

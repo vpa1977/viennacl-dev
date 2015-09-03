@@ -110,7 +110,7 @@ inline database_type<vector_axpy_template::parameters_type> init_vector_axpy()
 static database_type<vector_axpy_template::parameters_type> vector_axpy = init_vector_axpy();
 
 template<class NumericT>
-vector_axpy_template::parameters_type const & vector_axpy_params(ocl::device const & device)
+vector_axpy_template::parameters_type const & vector_axpy_params(viennacl::device_capabilities const & device)
 {
   return get_parameters<NumericT>(vector_axpy, device);
 }
