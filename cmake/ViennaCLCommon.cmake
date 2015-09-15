@@ -139,6 +139,7 @@ if(ENABLE_MTL4)
 endif()
 
 if (ENABLE_OPENCL)
+  add_compile_options("-DCL_USE_DEPRECATED_OPENCL_2_0_APIS")
   include_directories(
    "${PROJECT_SOURCE_DIR}"
    ${OPENCL_INCLUDE_DIRS})
