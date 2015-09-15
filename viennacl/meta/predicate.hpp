@@ -502,7 +502,7 @@ template<> struct is_primitive_type<unsigned short>{ enum { value = true }; };
 template<> struct is_primitive_type<short>         { enum { value = true }; };
 /** \endcond */
 
-#ifdef VIENNACL_WITH_OPENCL
+#if defined(VIENNACL_WITH_OPENCL) || defined(VIENNACL_WITH_HSA)
 
 /** @brief Helper class for checking whether a particular type is a native OpenCL type. */
 template<class T>
@@ -525,6 +525,8 @@ template<> struct is_cl_type<cl_short> { enum { value = true }; };
 template<class T> struct is_floating_point { enum { value = false }; };
 template<> struct is_floating_point<float> { enum { value = true }; };
 template<> struct is_floating_point<double> { enum { value = true }; };
+
+template<class T> struct is_lol_point { enum { value = false }; };
 
 #endif
 

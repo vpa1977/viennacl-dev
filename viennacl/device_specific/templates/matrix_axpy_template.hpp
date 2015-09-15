@@ -31,7 +31,7 @@
 #include "viennacl/device_specific/mapped_objects.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/device_specific/utils.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/device_specific/templates/template_base.hpp"
 
 #include "viennacl/tools/tools.hpp"
@@ -131,7 +131,7 @@ public:
 
   void enqueue(std::string const & kernel_prefix, std::vector<lazy_program_compiler> & programs, statements_container const & statements)
   {
-    viennacl::ocl::kernel & kernel = programs[0].program().get_kernel(kernel_prefix);
+    viennacl::kernel & kernel = programs[0].program().kernel(kernel_prefix);
 
     kernel.local_work_size(0, p_.local_size_0);
     kernel.local_work_size(1, p_.local_size_1);

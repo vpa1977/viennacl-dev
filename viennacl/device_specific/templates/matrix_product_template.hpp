@@ -36,7 +36,7 @@ License:         MIT (X11), see file LICENSE in the base directory
 #include "viennacl/device_specific/utils.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/forwards.h"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -714,7 +714,7 @@ private:
     if (A.size1()==0 || A.size2()==0 || B.size1()==0 || B.size2()==0 || C.size1()==0 || C.size2()==0)
       return;
 
-    viennacl::ocl::kernel& kernel = programs[id].program().get_kernel(kernel_prefix);
+    viennacl::kernel& kernel = programs[id].program().kernel(kernel_prefix);
 
     kernel.local_work_size(0, p_.local_size_0);
     kernel.local_work_size(1, p_.local_size_1);

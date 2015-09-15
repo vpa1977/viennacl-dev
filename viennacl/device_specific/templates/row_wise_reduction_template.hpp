@@ -36,7 +36,7 @@
 #include "viennacl/device_specific/templates/utils.hpp"
 
 #include "viennacl/tools/tools.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/scheduler/io.hpp"
 
 namespace viennacl
@@ -259,16 +259,16 @@ public:
     parse(statements.data().front(), idx, is_trans, A);
     bool row_major = utils::call_on_matrix(A, utils::row_major_fun());
 
-    viennacl::ocl::kernel * kernel;
+    viennacl::kernel * kernel;
     if ((is_trans  ^ row_major)&& p_.simd_width>1)
     {
       if (has_strided_access(statements))
-        kernel = &programs[1].program().get_kernel(kernel_prefix);
+        kernel = &programs[1].program().kernel(kernel_prefix);
       else
-        kernel = &programs[0].program().get_kernel(kernel_prefix);
+        kernel = &programs[0].program().kernel(kernel_prefix);
     }
     else
-      kernel = &programs[0].program().get_kernel(kernel_prefix);
+      kernel = &programs[0].program().kernel(kernel_prefix);
 
     kernel->local_work_size(0,p_.local_size_0);
     kernel->local_work_size(1,p_.local_size_1);

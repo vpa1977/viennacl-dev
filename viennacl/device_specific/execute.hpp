@@ -45,7 +45,7 @@ inline void execute(template_base const & T, statements_container const & statem
 {
   //Generate program name
   std::string program_name = tree_parsing::statements_representation(statements, BIND_TO_HANDLE);
-  execution_handler handler(program_name, ctx, ctx.current_device(), force_compilation);
+  execution_handler<viennacl::ocl::context> handler(program_name, ctx, ctx.current_device(), force_compilation);
   handler.add(program_name, T, statements);
   handler.execute(program_name, statements);
 }

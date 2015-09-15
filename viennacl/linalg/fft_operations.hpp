@@ -64,11 +64,6 @@ void direct(viennacl::vector<NumericT, AlignmentV> const & in,
     viennacl::linalg::opencl::direct(viennacl::traits::opencl_handle(in), viennacl::traits::opencl_handle(out), size, stride, batch_num, sign,data_order);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::direct(viennacl::traits::hsa_handle(in), viennacl::traits::hsa_handle(out), size, stride, batch_num, sign,data_order);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -107,11 +102,6 @@ void direct(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> const & 
     viennacl::linalg::opencl::direct(viennacl::traits::opencl_handle(in), viennacl::traits::opencl_handle(out), size, stride, batch_num, sign,data_order);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::direct(viennacl::traits::hsa_handle(in), viennacl::traits::hsa_handle(out), size, stride, batch_num, sign,data_order);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -145,11 +135,6 @@ void reorder(viennacl::vector<NumericT, AlignmentV>& in, vcl_size_t size, vcl_si
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::reorder<NumericT>(viennacl::traits::opencl_handle(in), size, stride, bits_datasize, batch_num, data_order);
     break;
-#endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::reorder<NumericT>(viennacl::traits::hsa_handle(in), size, stride, bits_datasize, batch_num, data_order);
-break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA
@@ -188,11 +173,6 @@ void radix2(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> & in, vc
     viennacl::linalg::opencl::radix2(viennacl::traits::opencl_handle(in), size, stride, batch_num, sign,data_order);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::radix2(viennacl::traits::hsa_handle(in), size, stride, batch_num, sign,data_order);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -230,11 +210,6 @@ void radix2(viennacl::vector<NumericT, AlignmentV>& in, vcl_size_t size, vcl_siz
     viennacl::linalg::opencl::radix2(viennacl::traits::opencl_handle(in), size, stride, batch_num, sign,data_order);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::radix2(viennacl::traits::hsa_handle(in), size, stride, batch_num, sign,data_order);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -271,11 +246,6 @@ void bluestein(viennacl::vector<NumericT, AlignmentV> & in,
     viennacl::linalg::opencl::bluestein(in, out, 1);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::bluestein(in, out, 1);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -308,11 +278,6 @@ void multiply_complex(viennacl::vector<NumericT, AlignmentV> const & input1,
     viennacl::linalg::opencl::multiply_complex(input1, input2, output);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::multiply_complex(input1, input2, output);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -343,11 +308,6 @@ void normalize(viennacl::vector<NumericT, AlignmentV> & input)
     viennacl::linalg::opencl::normalize(input);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::normalize(input);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -377,11 +337,6 @@ void transpose(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> & inp
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::transpose(input);
     break;
-#endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::transpose(input);
-break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA
@@ -414,11 +369,6 @@ void transpose(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> const
     viennacl::linalg::opencl::transpose(input, output);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::transpose(input, output);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -449,11 +399,6 @@ void real_to_complex(viennacl::vector_base<NumericT> const & in,
       case viennacl::OPENCL_MEMORY:
       viennacl::linalg::opencl::real_to_complex(in,out,size);
       break;
-#endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-      viennacl::linalg::hsa::real_to_complex(in,out,size);
-break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA
@@ -486,11 +431,6 @@ void complex_to_real(viennacl::vector_base<NumericT> const & in,
     viennacl::linalg::opencl::complex_to_real(in, out, size);
     break;
 #endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::complex_to_real(in, out, size);
-break;
-#endif
 
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
@@ -520,11 +460,6 @@ void reverse(viennacl::vector_base<NumericT> & in)
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::reverse(in);
     break;
-#endif
-#ifdef VIENNACL_WITH_HSA
-case viennacl::HSA_MEMORY:
-    viennacl::linalg::hsa::reverse(in);
-break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA

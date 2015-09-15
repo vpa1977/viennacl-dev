@@ -34,6 +34,13 @@ if (ENABLE_OPENCL)
      target_link_libraries(${PROG}-test-opencl ${OPENCL_LIBRARIES} ${Boost_LIBRARIES})
      add_test(${PROG}-opencl ${PROG}-test-opencl)
      set_target_properties(${PROG}-test-opencl PROPERTIES COMPILE_FLAGS "-DVIENNACL_WITH_OPENCL")
+     if (ENABLE_HSA) 
+       target_link_libraries(${PROG}-test-opencl ${HSA_LIBRARY})
+       target_link_libraries(${PROG}-test-opencl ${HSA_LIBRARY_EXT})
+       target_link_libraries(${PROG}-test-opencl ${HSA_KMT})
+       set_target_properties(${PROG}-test-opencl PROPERTIES COMPILE_FLAGS "-DVIENNACL_WITH_HSA -DVIENNACL_WITH_OPENCL")
+     endif(ENABLE_HSA)
+
   endforeach(PROG)
 
   include_directories(${PROJECT_SOURCE_DIR}/external)

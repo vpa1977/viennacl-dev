@@ -22,6 +22,7 @@
 #include "viennacl/device_specific/forwards.h"
 #include "viennacl/scheduler/forwards.h"
 
+
 namespace viennacl
 {
 namespace scheduler

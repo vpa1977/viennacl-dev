@@ -238,7 +238,7 @@ void amg_coarse_ag(compressed_matrix<NumericT> const & A,
   else
     throw std::runtime_error("Only MIS2 coarsening implemented. Selected coarsening not available with OpenCL backend!");
 
-  viennacl::linalg::opencl::amg::enumerate_coarse_points(amg_context);
+  viennacl::linalg::hsa::amg::enumerate_coarse_points(amg_context);
 
   //
   // Stage 2: Propagate coarse aggregate indices to neighbors:

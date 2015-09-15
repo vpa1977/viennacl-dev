@@ -50,7 +50,7 @@ namespace viennacl
      * This class was originally written before the OpenCL C++ bindings were standardized.
      * Regardless, it provides a couple of convience functionality which is not covered by the OpenCL C++ bindings.
      */
-    class context
+    class context : public viennacl::program_compiler
     {
       typedef std::vector< tools::shared_ptr<viennacl::hsa::program> > program_container_type;
 
@@ -357,6 +357,11 @@ public:
 #endif
         return *programs_.back();
       }
+      
+      void compile_program(std::string const & source, std::string const & prog_name)
+      {
+        add_program(source, prog_name);
+      }
 
       /** @brief Adds a new program with the provided source to the context. Compiles the program and extracts all kernels from it
        */
@@ -440,7 +445,7 @@ public:
       }
 
       /** @brief Returns the program with the provided name */
-      viennacl::hsa::program & get_program(std::string const & name)
+      viennacl::abstract_program & get_program(std::string const & name)
       {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
         std::cout << "ViennaCL: Getting program '" << name << "' from context " << h_ << std::endl;
@@ -459,7 +464,7 @@ public:
         //return programs_[0];  //return a defined object
       }
 
-      viennacl::hsa::program const & get_program(std::string const & name) const
+      viennacl::abstract_program const & get_program(std::string const & name) const
       {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
         std::cout << "ViennaCL: Getting program '" << name << "' from context " << h_ << std::endl;
@@ -518,7 +523,7 @@ public:
       /** @brief Convenience function for retrieving the kernel of a program directly from the context */
       viennacl::hsa::kernel & get_kernel(std::string const & program_name, std::string const & kernel_name)
       {
-        return get_program(program_name).get_kernel(kernel_name);
+        return (viennacl::hsa::kernel &) get_program(program_name).kernel(kernel_name);
       }
 
       /** @brief Returns the number of devices within this context */
@@ -831,7 +836,7 @@ public:
                   assert(err == HSA_STATUS_SUCCESS);
 
                   viennacl::hsa::kernel_arg_buffer kernargs(prg.kernarg_region_, kernarg_segment_size);
-                  tools::shared_ptr<viennacl::hsa::kernel> kern_ptr(new kernel(kernel_object, kernargs, prg, *prg.p_context(), kernel_name, group_segment_size, private_segment_size));
+                  tools::shared_ptr<viennacl::hsa::kernel> kern_ptr(new viennacl::hsa::kernel(kernel_object, kernargs, prg, *prg.p_context(), kernel_name, group_segment_size, private_segment_size));
                   prg.add_kernel(kern_ptr);
 
         }

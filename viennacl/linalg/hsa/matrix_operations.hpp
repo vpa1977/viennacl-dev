@@ -60,19 +60,19 @@ namespace detail
   template<typename NumericT>
   viennacl::hsa::kernel & legacy_kernel_for_matrix(matrix_base<NumericT> const & M, std::string const & kernel_name)
   {
-    viennacl::hsa::context & ctx = traits::opencl_context(M);
+    viennacl::hsa::context & ctx = traits::hsa_context(M);
     viennacl::hsa::program * program;
     if (M.row_major())
     {
       typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, row_major, viennacl::hsa::context>    KernelClass;
       KernelClass::init(ctx);
-      program = &ctx.get_program(KernelClass::program_name());
+      program = (viennacl::hsa::program *)&ctx.get_program(KernelClass::program_name());
     }
     else
     {
       typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, column_major, viennacl::hsa::context>    KernelClass;
       KernelClass::init(ctx);
-      program = &ctx.get_program(KernelClass::program_name());
+      program = (viennacl::hsa::program *)&ctx.get_program(KernelClass::program_name());
     }
     return program->get_kernel(kernel_name);
   }

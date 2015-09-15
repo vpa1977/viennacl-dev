@@ -24,6 +24,7 @@
 
 #include <string>
 #include <vector>
+#include "viennacl/abstract_kernel.hpp"
 #include "viennacl/ocl/forwards.h"
 #include "viennacl/ocl/handle.hpp"
 #include "viennacl/ocl/kernel.hpp"
@@ -39,7 +40,7 @@ namespace ocl
   * This class was written when the OpenCL C++ bindings haven't been standardized yet.
   * Regardless, it takes care about some additional details and is supposed to provide higher convenience by holding the kernels defined in the program.
   */
-class program
+class program : public viennacl::abstract_program
 {
   typedef std::vector<tools::shared_ptr<viennacl::ocl::kernel> >    kernel_container_type;
 
@@ -65,6 +66,11 @@ public:
 
   /** @brief Adds a kernel to the program */
   inline viennacl::ocl::kernel & add_kernel(cl_kernel kernel_handle, std::string const & kernel_name);   //see context.hpp for implementation
+  
+  viennacl::kernel& kernel(std::string const & name)
+  {
+    return (viennacl::kernel&) get_kernel(name);
+  }
 
   /** @brief Returns the kernel with the provided name */
   inline viennacl::ocl::kernel & get_kernel(std::string const & name);    //see context.hpp for implementation

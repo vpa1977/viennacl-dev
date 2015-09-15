@@ -310,12 +310,14 @@ struct stride2_fun
   template<class T> result_type operator()(T const &t) const { return viennacl::traits::stride2(t); }
 };
 
+#if defined(VIENNACL_WITH_OPENCL)
 struct handle_fun
 {
   typedef cl_mem result_type;
   template<class T>
   result_type operator()(T const &t) const { return viennacl::traits::opencl_handle(t); }
 };
+#endif
 
 struct internal_size1_fun
 {

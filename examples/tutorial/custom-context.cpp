@@ -32,6 +32,7 @@
 
 
 // ViennaCL headers
+
 #include "viennacl/ocl/backend.hpp"
 #include "viennacl/vector.hpp"
 #include "viennacl/matrix.hpp"

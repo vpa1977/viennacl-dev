@@ -33,8 +33,11 @@
 #include "viennacl/linalg/host_based/nmf_operations.hpp"
 
 #ifdef VIENNACL_WITH_OPENCL
-#include "viennacl/linalg/opencl/kernels/nmf.hpp"
 #include "viennacl/linalg/opencl/nmf_operations.hpp"
+#include "viennacl/linalg/opencl/kernels/nmf.hpp"
+#endif
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/linalg/hsa/nmf_operations.hpp"
 #endif
 
 #ifdef VIENNACL_WITH_CUDA

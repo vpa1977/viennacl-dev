@@ -340,7 +340,7 @@ public:
 
       if (ctx.current_device().double_support())
       {
-        viennacl::ocl::append_double_precision_pragma<double>(ctx, source);
+        viennacl::ocl::append_double_precision_pragma<double>(ctx.current_device().double_support_extension(), source);
 
         generate_vector_convert(source, viennacl::ocl::type_to_string<int>::apply(),           viennacl::ocl::type_to_string<double>::apply());
         generate_vector_convert(source, viennacl::ocl::type_to_string<unsigned int>::apply(),  viennacl::ocl::type_to_string<double>::apply());

@@ -162,7 +162,7 @@ inline viennacl::backend::mem_handle::ram_handle_type const & ram_handle(viennac
 //
 // OpenCL handle extraction
 //
-#ifdef VIENNACL_WITH_OPENCL
+#if defined(VIENNACL_WITH_OPENCL) || defined(VIENNACL_WITH_HSA)
 /** @brief Generic helper routine for extracting the OpenCL handle of a ViennaCL object. Non-const version. */
 template<typename T>
 viennacl::ocl::handle<cl_mem> & opencl_handle(T & obj)

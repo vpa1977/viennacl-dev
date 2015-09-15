@@ -188,7 +188,7 @@ namespace viennacl
       }
 
       /** @brief Sets the context device type */
-      static void set_context_platform_index(long i, vcl_size_t pf_index)
+      static void set_context_platform_index(long /*i*/, vcl_size_t /* pf_index*/)
       {
         //contexts_[i].platform_index(pf_index);
       }
@@ -326,7 +326,7 @@ namespace viennacl
     /** @brief Convenience function for getting the kernel for a particular program from the current active context */
     inline viennacl::hsa::kernel & get_kernel(std::string const & prog_name, std::string const & kernel_name)
     {
-      return viennacl::hsa::current_context().get_program(prog_name).get_kernel(kernel_name);
+      return (viennacl::hsa::kernel &)viennacl::hsa::current_context().get_program(prog_name).kernel(kernel_name);
     }
 
     /** @brief Convenience function for switching the active device in the current context */

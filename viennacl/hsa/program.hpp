@@ -24,10 +24,14 @@
 
 #include <string>
 #include <vector>
+#include "viennacl/abstract_kernel.hpp"
 #include "viennacl/hsa/forwards.h"
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/kernel.hpp"
 #include "viennacl/tools/shared_ptr.hpp"
+#include "kernel.hpp"
+#include "../abstract_kernel.hpp"
+
 
 namespace viennacl
 {
@@ -37,13 +41,13 @@ namespace viennacl
     /** @brief Wrapper class for an HSA program.
      *
      */
-    class program
+    class program : public viennacl::abstract_program
     {
       typedef std::vector<tools::shared_ptr<viennacl::hsa::kernel> > kernel_container_type;
 
     public:
 
-      program() :
+        program() :
       p_context_(NULL)
       {
       }
@@ -82,11 +86,17 @@ namespace viennacl
       {
         return name_;
       }
-
+      
       /** @brief Returns the kernel with the provided name */
       inline viennacl::hsa::kernel & get_kernel(std::string const & name); //see context.hpp for implementation
 
-    private:
+      viennacl::kernel& kernel(std::string const& name) 
+      {
+         return (viennacl::kernel &)get_kernel(name);
+      }
+
+
+          private:
       friend class viennacl::hsa::context;
 
       void add_kernel(

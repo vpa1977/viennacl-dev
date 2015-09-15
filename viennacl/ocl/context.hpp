@@ -33,6 +33,7 @@
 #include <vector>
 #include <map>
 #include <cstdlib>
+#include "viennacl/compatible_handle.hpp"
 #include "viennacl/ocl/forwards.h"
 #include "viennacl/ocl/error.hpp"
 #include "viennacl/ocl/handle.hpp"
@@ -52,7 +53,7 @@ namespace ocl
   * This class was originally written before the OpenCL C++ bindings were standardized.
   * Regardless, it provides a couple of convience functionality which is not covered by the OpenCL C++ bindings.
 */
-class context
+class context : public viennacl::program_compiler
 {
   
   typedef std::vector< tools::shared_ptr<viennacl::ocl::program> >   program_container_type;
@@ -533,7 +534,7 @@ public:
   }
 
   /** @brief Returns the program with the provided name */
-  viennacl::ocl::program & get_program(std::string const & name)
+  viennacl::abstract_program & get_program(std::string const & name)
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Getting program '" << name << "' from context " << h_ << std::endl;
@@ -551,8 +552,13 @@ public:
     throw program_not_found(name);
     //return programs_[0];  //return a defined object
   }
+  
+    void compile_program(std::string const & source, std::string const & prog_name)
+    {
+      add_program(source, prog_name);
+    }
 
-  viennacl::ocl::program const & get_program(std::string const & name) const
+  viennacl::abstract_program const & get_program(std::string const & name) const
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Getting program '" << name << "' from context " << h_ << std::endl;
@@ -606,7 +612,7 @@ public:
   vcl_size_t program_num() { return programs_.size(); }
 
   /** @brief Convenience function for retrieving the kernel of a program directly from the context */
-  viennacl::ocl::kernel & get_kernel(std::string const & program_name, std::string const & kernel_name) { return get_program(program_name).get_kernel(kernel_name); }
+  viennacl::ocl::kernel & get_kernel(std::string const & program_name, std::string const & kernel_name) { return  (viennacl::ocl::kernel &)get_program(program_name).kernel(kernel_name); }
 
   /** @brief Returns the number of devices within this context */
   vcl_size_t device_num() { return devices_.size(); }
@@ -817,6 +823,25 @@ inline void viennacl::ocl::kernel::set_work_size_defaults()
     global_work_size_[0] = s * local_work_size_[0]; global_work_size_[1] = 0; global_work_size_[2] = 0;
   }
 }
+
+class opencl_compatible_handle_impl : public viennacl::opencl_compatible_handle
+{
+  const viennacl::ocl::handle<cl_mem> m_ref;
+public:
+  opencl_compatible_handle_impl(const viennacl::ocl::handle<cl_mem> ref) : m_ref(ref)
+  {}
+  viennacl::ocl::handle<cl_mem> const & opencl_handle() const
+  {
+    return m_ref;
+  }
+};
+
+inline viennacl::kernel::compatible_handle_ptr viennacl::ocl::kernel::create_memory(int mem_type, int byte_size)
+{
+  viennacl::ocl::handle<cl_mem> ocl_handle = context().create_memory(mem_type, byte_size);
+  return viennacl::tools::shared_ptr<compatible_handle>((compatible_handle*)(new opencl_compatible_handle_impl(ocl_handle)));
+}
+
 
 }
 }

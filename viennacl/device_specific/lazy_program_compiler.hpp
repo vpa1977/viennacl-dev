@@ -25,6 +25,8 @@
 
 #include <map>
 
+#include "viennacl/abstract_kernel.hpp"
+
 #include "viennacl/ocl/context.hpp"
 
 #ifdef VIENNACL_WITH_HSA
@@ -41,18 +43,15 @@ namespace device_specific
   {
   public:
 
-    lazy_program_compiler(viennacl::ocl::context * ctx, std::string const & name, std::string const & src, bool force_recompilation) : ctx_(ctx), hsa_ctx_(0), name_(name), src_(src), force_recompilation_(force_recompilation){ }
-    lazy_program_compiler(viennacl::ocl::context * ctx, std::string const & name, bool force_recompilation) : ctx_(ctx),hsa_ctx_(0), name_(name), force_recompilation_(force_recompilation){ }
-
-    lazy_program_compiler(viennacl::hsa::context * ctx, std::string const & name, std::string const & src, bool force_recompilation) : ctx_(0), hsa_ctx_(ctx), name_(name), src_(src), force_recompilation_(force_recompilation){ }
-    lazy_program_compiler(viennacl::hsa::context * ctx, std::string const & name, bool force_recompilation) : ctx_(0), hsa_ctx_(ctx), name_(name), force_recompilation_(force_recompilation){ }
-
+    lazy_program_compiler(viennacl::program_compiler* ctx, std::string const & name,  bool force_recompilation) : ctx_(ctx),  name_(name), src_(""), force_recompilation_(force_recompilation){ }
+    lazy_program_compiler(viennacl::program_compiler* ctx, std::string const & name, std::string const & src, bool force_recompilation) : ctx_(ctx),  name_(name), src_(src), force_recompilation_(force_recompilation){ }
+    
     
     void add(std::string const & src) {  src_+=src; }
 
     std::string const & src() const { return src_; }
 
-    inline viennacl::ocl::program & program()
+    inline viennacl::abstract_program & program()
     {
       if (force_recompilation_ && ctx_->has_program(name_))
         ctx_->delete_program(name_);
@@ -61,7 +60,7 @@ namespace device_specific
 #ifdef VIENNACL_BUILD_INFO
           std::cerr << "Creating program " << program_name << std::endl;
 #endif
-          ctx_->add_program(src_, name_);
+          ctx_->compile_program(src_, name_);
 #ifdef VIENNACL_BUILD_INFO
           std::cerr << "Done creating program " << program_name << std::endl;
 #endif
@@ -69,27 +68,10 @@ namespace device_specific
       return ctx_->get_program(name_);
     }
     
-    inline  viennacl::hsa::program & program()
-    {
-      if (force_recompilation_ && hsa_ctx_->has_program(name_))
-        hsa_ctx_->delete_program(name_);
-      if (!hsa_ctx_->has_program(name_))
-      {
-#ifdef VIENNACL_BUILD_INFO
-          std::cerr << "Creating program " << program_name << std::endl;
-#endif
-          hsa_ctx_->add_program(src_, name_);
-#ifdef VIENNACL_BUILD_INFO
-          std::cerr << "Done creating program " << program_name << std::endl;
-#endif
-      }
-      return hsa_ctx_->get_program(name_);
-    }
+   
 
   private:
-    viennacl::ocl::context * ctx_;
-    
-    viennacl::hsa::context * hsa_ctx_;
+    viennacl::program_compiler * ctx_;
     std::string name_;
     std::string src_;
     bool force_recompilation_;

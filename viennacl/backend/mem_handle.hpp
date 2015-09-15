@@ -27,6 +27,8 @@
 #include "viennacl/forwards.h"
 #include "viennacl/tools/shared_ptr.hpp"
 #include "viennacl/backend/cpu_ram.hpp"
+#include "viennacl/compatible_handle.hpp"
+
 
 #ifdef VIENNACL_WITH_OPENCL
 #include "viennacl/backend/opencl.hpp"
@@ -94,7 +96,15 @@ inline memory_types default_memory_type(memory_types new_memory_type) { return d
  * Instead, this class collects all the necessary conditional compilations.
  *
  */
-class mem_handle
+class mem_handle : 
+public viennacl::compatible_handle
+#ifdef VIENNACL_WITH_HSA        
+,public viennacl::hsa_compatible_handle
+#endif
+#ifdef VIENNACL_WITH_OPENCL
+,public viennacl::opencl_compatible_handle
+#endif
+
 {
 public:
   typedef viennacl::tools::shared_ptr<char>      ram_handle_type;

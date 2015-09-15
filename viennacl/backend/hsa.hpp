@@ -27,6 +27,7 @@
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/backend.hpp"
 
+
 namespace viennacl
 {
 namespace backend

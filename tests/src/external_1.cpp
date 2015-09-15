@@ -75,6 +75,7 @@
   #include "viennacl/linalg/amg.hpp"
   #include "viennacl/linalg/spai.hpp"
   #include "viennacl/linalg/svd.hpp"
+  #include "viennacl/ocl/context.hpp"
   #include "viennacl/device_specific/execute.hpp"
 #endif
 

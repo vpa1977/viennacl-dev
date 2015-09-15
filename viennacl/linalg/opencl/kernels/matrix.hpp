@@ -622,8 +622,8 @@ public:
       std::string numeric_string = viennacl::ocl::type_to_string<NumericT>::apply();
       typename Context::device_type const & device = ctx.current_device();
       std::string program_name = viennacl::ocl::type_to_string<NumericT>::apply() + (is_row_major?"matrix_element_row":"matrix_element_col");
-      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context><Context>(program_name, ctx, device)));
-      ds::execution_handler<Context><Context> & handler = viennacl::device_specific::at(handlers_map, key);
+      handlers_map.insert(std::make_pair(key, ds::execution_handler<Context>(program_name, ctx, device)));
+      ds::execution_handler<Context> & handler = viennacl::device_specific::at(handlers_map, key);
       ds::matrix_axpy_template::parameters_type matrix_axpy_params = ds::builtin_database::matrix_axpy_params<NumericT>(device);
 
       tools::shared_ptr<viennacl::matrix_base<NumericT> > pA, pB, pC;

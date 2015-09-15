@@ -71,13 +71,13 @@ namespace viennacl
 
       // setup dispatch sizes
       size_t dimensions = 1;
-      aql.workgroup_size_x = kernel.local_work_size(0);
-      aql.grid_size_x = kernel.global_work_size(0);
+      aql.workgroup_size_x = (uint16_t)kernel.local_work_size(0);
+      aql.grid_size_x = (uint32_t)kernel.global_work_size(0);
       if (kernel.global_work_size(1) >= 1)
       {
         ++dimensions;
-        aql.grid_size_y = kernel.global_work_size(1);
-        aql.workgroup_size_y = kernel.local_work_size(1);
+        aql.grid_size_y = (uint32_t)(kernel.global_work_size(1));
+        aql.workgroup_size_y = (uint16_t)(kernel.local_work_size(1));
       } else
       {
         aql.grid_size_y = 1;
@@ -86,14 +86,14 @@ namespace viennacl
       if (kernel.global_work_size(2) >= 1)
       {
         ++dimensions;
-        aql.grid_size_z = kernel.global_work_size(2);
-        aql.workgroup_size_z = kernel.local_work_size(2);
+        aql.grid_size_z = (uint32_t)(kernel.global_work_size(2));
+        aql.workgroup_size_z = (uint16_t)(kernel.local_work_size(2));
       } else
       {
         aql.grid_size_z = 1;
         aql.workgroup_size_z = 1;
       }
-      aql.setup |= dimensions << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
+      aql.setup |= (uint16_t)(dimensions << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS);
 
       // set dispatch fences
 
@@ -102,9 +102,9 @@ namespace viennacl
       kernel.arg_buffer_.finalize(kernel.workgroup_group_segment_byte_size_);
       aql.kernarg_address = kernel.arg_buffer_.kernargs();
       // Initialize memory resources needed to execute
-      aql.group_segment_size = kernel.workgroup_group_segment_byte_size_
-              + kernel.arg_buffer_.dynamic_local_size();
-      aql.private_segment_size = kernel.workitem_private_segment_byte_size_;
+      aql.group_segment_size =(uint32_t)( kernel.workgroup_group_segment_byte_size_
+              + kernel.arg_buffer_.dynamic_local_size());
+      aql.private_segment_size =(uint32_t)( kernel.workitem_private_segment_byte_size_);
 #if defined(VIENNACL_HSA_WAIT_KERNEL)        
       aql.completion_signal = signal;
 #endif        

@@ -34,7 +34,7 @@
 
 #include "viennacl/device_specific/templates/template_base.hpp"
 #include "viennacl/device_specific/templates/utils.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -325,16 +325,16 @@ public:
     scheduler::statement const & statement = statements.data().front();
     unsigned int scalartype_size = utils::size_of(lhs_most(statement.array(), statement.root()).lhs.numeric_type);
 
-    viennacl::ocl::kernel * kernels[2];
+    viennacl::kernel * kernels[2];
     if (has_strided_access(statements) && p_.simd_width > 1)
     {
-      kernels[0] = &programs[0].program().get_kernel(kernel_prefix+"_strided_0");
-      kernels[1] = &programs[0].program().get_kernel(kernel_prefix+"_strided_1");
+      kernels[0] = &programs[0].program().kernel(kernel_prefix+"_strided_0");
+      kernels[1] = &programs[0].program().kernel(kernel_prefix+"_strided_1");
     }
     else
     {
-      kernels[0] = &programs[1].program().get_kernel(kernel_prefix+"_0");
-      kernels[1] = &programs[1].program().get_kernel(kernel_prefix+"_1");
+      kernels[0] = &programs[1].program().kernel(kernel_prefix+"_0");
+      kernels[1] = &programs[1].program().kernel(kernel_prefix+"_1");
     }
 
     kernels[0]->local_work_size(0, p_.local_size_0);
@@ -354,14 +354,14 @@ public:
         if (utils::is_index_reduction((*it)->op))
         {
           if (tmpidx_.size() <= j)
-            tmpidx_.push_back(kernels[k]->context().create_memory(CL_MEM_READ_WRITE, p_.num_groups*4));
-          kernels[k]->arg(n_arg++, tmpidx_[j]);
+            tmpidx_.push_back(kernels[k]->create_memory(CL_MEM_READ_WRITE, p_.num_groups*4));
+          kernels[k]->arg(n_arg++,*tmpidx_[j].get());
           j++;
         }
 
         if (tmp_.size() <= i)
-          tmp_.push_back(kernels[k]->context().create_memory(CL_MEM_READ_WRITE, p_.num_groups*scalartype_size));
-        kernels[k]->arg(n_arg++, tmp_[i]);
+          tmp_.push_back(kernels[k]->create_memory(CL_MEM_READ_WRITE, p_.num_groups*scalartype_size));
+        kernels[k]->arg(n_arg++, *tmpidx_[j].get());
         i++;
       }
       set_arguments(statements, *kernels[k], n_arg);
@@ -373,8 +373,9 @@ public:
   }
 
 private:
-  std::vector< viennacl::ocl::handle<cl_mem> > tmp_;
-  std::vector< viennacl::ocl::handle<cl_mem> > tmpidx_;
+  typedef  viennacl::tools::shared_ptr< viennacl::compatible_handle > compatible_handle_ptr;
+  std::vector< compatible_handle_ptr > tmp_;
+  std::vector< compatible_handle_ptr > tmpidx_;
 };
 
 }

@@ -66,13 +66,13 @@ namespace detail
     {
       typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, row_major>  KernelClass;
       KernelClass::init(ctx);
-      program = &ctx.get_program(KernelClass::program_name());
+      program = (viennacl::ocl::program *)&ctx.get_program(KernelClass::program_name());
     }
     else
     {
       typedef viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, column_major>  KernelClass;
       KernelClass::init(ctx);
-      program = &ctx.get_program(KernelClass::program_name());
+      program = (viennacl::ocl::program *)&ctx.get_program(KernelClass::program_name());
     }
     return program->get_kernel(kernel_name);
   }

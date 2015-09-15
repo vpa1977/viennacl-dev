@@ -37,7 +37,7 @@
 #include "viennacl/ocl/device_utils.hpp"
 #include "viennacl/ocl/handle.hpp"
 #include "viennacl/ocl/error.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 
 namespace viennacl
 {

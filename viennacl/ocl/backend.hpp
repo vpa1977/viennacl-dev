@@ -338,7 +338,7 @@ inline viennacl::ocl::command_queue & get_queue(cl_device_id dev_id, unsigned in
 /** @brief Convenience function for getting the kernel for a particular program from the current active context */
 inline viennacl::ocl::kernel & get_kernel(std::string const & prog_name, std::string const & kernel_name)
 {
-  return viennacl::ocl::current_context().get_program(prog_name).get_kernel(kernel_name);
+  return (viennacl::ocl::kernel &) viennacl::ocl::current_context().get_program(prog_name).kernel(kernel_name);
 }
 
 /** @brief Convenience function for switching the active device in the current context */

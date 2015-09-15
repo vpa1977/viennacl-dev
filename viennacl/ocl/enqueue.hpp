@@ -130,7 +130,7 @@ void enqueue(KernelType & k, viennacl::ocl::command_queue const & queue)
 template<typename KernelType>
 void enqueue(KernelType & k)
 {
-  enqueue(k, k.context().get_queue());
+  enqueue(((viennacl::ocl::kernel&)k), ((viennacl::ocl::kernel&)k).context().get_queue());
 }
 
 inline void enqueue(viennacl::device_specific::custom_operation & op, viennacl::ocl::command_queue const & queue)

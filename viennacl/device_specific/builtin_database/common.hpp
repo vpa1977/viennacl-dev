@@ -24,7 +24,7 @@
 */
 
 #include "viennacl/ocl/device_utils.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/scheduler/forwards.h"
 
 #include "viennacl/device_specific/forwards.h"

@@ -38,7 +38,7 @@
 #include "viennacl/device_specific/mapped_objects.hpp"
 #include "viennacl/device_specific/tree_parsing.hpp"
 #include "viennacl/device_specific/utils.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 namespace viennacl
 {
 namespace device_specific
@@ -201,7 +201,7 @@ private:
   public:
     typedef void result_type;
 
-    set_arguments_functor(symbolic_binder & binder, unsigned int & current_arg, viennacl::ocl::kernel & kernel) : binder_(binder), current_arg_(current_arg), kernel_(kernel){ }
+    set_arguments_functor(symbolic_binder & binder, unsigned int & current_arg, viennacl::kernel & kernel) : binder_(binder), current_arg_(current_arg), kernel_(kernel){ }
 
     template<class NumericT>
     result_type operator()(NumericT const & scal) const {
@@ -213,7 +213,7 @@ private:
     template<class NumericT>
     result_type operator()(scalar<NumericT> const & scal) const {
       if (binder_.bind(&viennacl::traits::handle(scal)))
-        kernel_.arg(current_arg_++, scal.handle().opencl_handle());
+        kernel_.arg(current_arg_++, scal.handle());
     }
 
     /** @brief Vector mapping */
@@ -221,7 +221,7 @@ private:
     result_type operator()(vector_base<NumericT> const & vec) const {
       if (binder_.bind(&viennacl::traits::handle(vec)))
       {
-        kernel_.arg(current_arg_++, vec.handle().opencl_handle());
+        kernel_.arg(current_arg_++, vec.handle());
         kernel_.arg(current_arg_++, cl_uint(viennacl::traits::start(vec)));
         kernel_.arg(current_arg_++, cl_uint(viennacl::traits::stride(vec)));
       }
@@ -243,7 +243,7 @@ private:
     {
       if (binder_.bind(&viennacl::traits::handle(mat)))
       {
-        kernel_.arg(current_arg_++, mat.handle().opencl_handle());
+        kernel_.arg(current_arg_++, mat.handle());
         kernel_.arg(current_arg_++, cl_uint(viennacl::traits::ld(mat)));
         if (mat.row_major())
         {
@@ -282,7 +282,7 @@ private:
   private:
     symbolic_binder & binder_;
     unsigned int & current_arg_;
-    viennacl::ocl::kernel & kernel_;
+    viennacl::kernel & kernel_;
   };
 
 protected:
@@ -306,7 +306,7 @@ protected:
     generate_prototype(stream, name, first_arguments, mappings, statements, std::map<std::string, unsigned int>());
   }
 
-  void set_arguments(statements_container const & statements, viennacl::ocl::kernel & kernel, unsigned int & current_arg)
+  void set_arguments(statements_container const & statements, viennacl::kernel & kernel, unsigned int & current_arg)
   {
     tools::shared_ptr<symbolic_binder> binder = make_binder(binding_policy_);
     for (statements_container::data_type::const_iterator itt = statements.data().begin(); itt != statements.data().end(); ++itt)

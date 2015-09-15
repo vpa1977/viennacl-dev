@@ -36,7 +36,7 @@
 
 #include "viennacl/device_specific/templates/template_base.hpp"
 #include "viennacl/device_specific/templates/utils.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 #include "viennacl/tools/tools.hpp"
 
 namespace viennacl
@@ -137,11 +137,11 @@ public:
 
   void enqueue(std::string const & kernel_prefix, std::vector<lazy_program_compiler> & programs,  statements_container const & statements)
   {
-    viennacl::ocl::kernel * kernel;
+    viennacl::kernel * kernel;
     if (has_strided_access(statements) && p_.simd_width > 1)
-      kernel = &programs[0].program().get_kernel(kernel_prefix+"_strided");
+      kernel = &programs[0].program().kernel(kernel_prefix+"_strided");
     else
-      kernel = &programs[1].program().get_kernel(kernel_prefix);
+      kernel = &programs[1].program().kernel(kernel_prefix);
 
     kernel->local_work_size(0, p_.local_size_0);
     kernel->global_work_size(0, p_.local_size_0*p_.num_groups);

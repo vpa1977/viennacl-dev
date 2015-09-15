@@ -486,7 +486,7 @@ void sum_impl(vector_base<NumericT> const & x,
   assert(viennacl::traits::hsa_context(x) == viennacl::traits::hsa_context(result) && bool("Operands do not reside in the same OpenCL context. Automatic migration not yet supported!"));
 
   viennacl::vector<NumericT> all_ones = viennacl::scalar_vector<NumericT>(x.size(), NumericT(1), viennacl::traits::context(x));
-  viennacl::linalg::opencl::inner_prod_impl(x, all_ones, result);
+  viennacl::linalg::hsa::inner_prod_impl(x, all_ones, result);
 }
 
 /** @brief Computes the sum over all entries of a vector.

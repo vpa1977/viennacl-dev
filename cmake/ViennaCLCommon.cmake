@@ -171,13 +171,11 @@ if (ENABLE_HSA)
 	    HSA_LIBRARY
 	    NAMES hsa-runtime64
 	    PATHS "${HSA_LIB_SEARCH_PATH}"
-	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
 	    )
 	find_library(
 	    HSA_LIBRARY_EXT
 	    NAMES hsa-runtime-ext64
 	    PATHS "${HSA_LIB_SEARCH_PATH}"
-	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
 	    )
 	find_library(
 	    HSA_KMT
@@ -186,8 +184,9 @@ if (ENABLE_HSA)
 	    #NO_DEFAULT_PATH  #uncomment this is you wish to surpress the use of default paths for OpenCL
 	    )
 	SET(CMAKE_LIBRARY_PATH "${CMAKE_LIBRARY_PATH}" ${HSA_LIB_SEARCH_PATH})
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVIENNACL_WITH_HSA -std=c++11")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	include_directories( ${HSA_INCLUDE_DIR} )
+  
 endif()
 
 # Export

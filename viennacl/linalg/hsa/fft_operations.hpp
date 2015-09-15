@@ -25,6 +25,7 @@
 #include "viennacl/forwards.h"
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/kernel.hpp"
+#include "viennacl/hsa/handle.hpp"
 #include "viennacl/traits/handle.hpp"
 #include "viennacl/traits/stride.hpp"
 #include "viennacl/linalg/host_based/fft_operations.hpp"
@@ -41,50 +42,6 @@ namespace viennacl
 {
 namespace linalg
 {
-namespace detail
-{
-namespace fft
-{
-
-  const vcl_size_t MAX_LOCAL_POINTS_NUM = 512;
-
-  /**
-   * @brief Get number of bits
-   */
-  inline vcl_size_t num_bits(vcl_size_t size)
-  {
-    vcl_size_t bits_datasize = 0;
-    vcl_size_t ds = 1;
-
-    while (ds < size)
-    {
-      ds = ds << 1;
-      bits_datasize++;
-    }
-
-    return bits_datasize;
-  }
-
-  /**
-   * @brief Find next power of two
-   */
-  inline vcl_size_t next_power_2(vcl_size_t n)
-  {
-    n = n - 1;
-
-    vcl_size_t power = 1;
-
-    while (power < sizeof(vcl_size_t) * 8)
-    {
-      n = n | (n >> power);
-      power *= 2;
-    }
-
-    return n + 1;
-  }
-
-} //namespce fft
-} //namespace detail
 
 namespace hsa
 {

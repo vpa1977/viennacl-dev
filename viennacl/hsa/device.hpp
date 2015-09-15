@@ -36,7 +36,7 @@
 #include "viennacl/ocl/device_utils.hpp" // including ocl type because it will require changing all maps
 #include "viennacl/hsa/handle.hpp"
 #include "viennacl/hsa/error.hpp"
-#include "viennacl/device.hpp"
+#include "viennacl/device_capabilities.hpp"
 
 namespace viennacl
 {

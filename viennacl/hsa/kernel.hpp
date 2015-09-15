@@ -32,6 +32,8 @@
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/local_mem.hpp"
 #include "viennacl/tools/shared_ptr.hpp"
+#include "viennacl/abstract_kernel.hpp"
+#include "viennacl/backend/mem_handle.hpp"
 
 #include <string.h>
 
@@ -39,6 +41,8 @@ namespace viennacl
 {
   namespace hsa
   {
+    
+    struct packed_cl_uint : public viennacl::packed_cl_uint {};
 
     class kernel_arg_buffer
     {
@@ -186,27 +190,34 @@ namespace viennacl
 
     };
 
-    /** @brief Helper class for packing four cl_uint numbers into a uint4 type for access inside an HSA kernel.
-     *
-     * Since the primary use is for dealing with ranges and strides, the four members are termed accordingly.
-     */
-    struct packed_cl_uint
-    {
-      /** @brief Starting value of the integer stride. */
-      uint32_t start;
-      /** @brief Increment between integers. */
-      uint32_t stride;
-      /** @brief Number of values in the stride. */
-      uint32_t size;
-      /** @brief Internal length of the buffer. Might be larger than 'size' due to padding. */
-      uint32_t internal_size;
-    };
+
 
     /** @brief Represents an HSA kernel within ViennaCL */
-    class kernel
+    class kernel : public viennacl::kernel
     {
       template<typename KernelType>
       friend void enqueue(KernelType & k, viennacl::hsa::command_queue const & queue);
+        class hsa_compatible_handle_impl : public hsa_compatible_handle
+        {
+          viennacl::tools::shared_ptr<char> m_ref;
+        public:
+          hsa_compatible_handle_impl(int byte_size) 
+          {
+            char* ptr = new char[byte_size];
+            m_ref = viennacl::tools::shared_ptr<char>(ptr);
+          }
+          virtual ram_handle_type const & hsa_handle() const
+          {
+            return m_ref;
+          }
+        };
+      
+    public:      
+      
+      compatible_handle_ptr create_memory(int/* mem_type*/, int byte_size) 
+      {
+        return viennacl::tools::shared_ptr<compatible_handle>((compatible_handle*)(new hsa_compatible_handle_impl(byte_size)));
+      }
 
     public:
       typedef vcl_size_t size_type;
@@ -312,8 +323,12 @@ namespace viennacl
         arg_buffer_.set(pos, val);
       }
 
+      void arg(unsigned int pos, const viennacl::hsa::packed_cl_uint& val)
+      {
+        arg(pos, (const viennacl::packed_cl_uint& ) val);
+      }
       /** @brief Sets four packed unsigned integers as argument at the provided position */
-      void arg(unsigned int pos, const packed_cl_uint& val)
+      void arg(unsigned int pos, const viennacl::packed_cl_uint& val)
       {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
         std::cout << "ViennaCL: Setting packed_cl_uint kernel argument (" << val.start << ", " << val.stride << ", " << val.size << ", " << val.internal_size << ") at pos " << pos << " for kernel " << name_ << std::endl;
@@ -374,6 +389,8 @@ namespace viennacl
 
         arg(pos, (const void*) tmp.get());
       }
+      
+      
 
       template <typename T>
       void arg(unsigned int pos, viennacl::vector_base<T> const& h)
@@ -385,13 +402,20 @@ namespace viennacl
         arg(pos, h.handle().hsa_handle());
       }
 
-      void arg(unsigned int pos, void const * val)
+      
+      void arg(unsigned int pos, char* const val)
+      {
+        arg_buffer_.set(pos, (const void* const)val);
+
+      }
+      
+      void arg(unsigned int pos, const void * const val)
       {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
         std::cout << "ViennaCL: Setting pointer kernel argument " << val << " at pos " << pos << " for kernel " << name_ << std::endl;
 #endif
+        
         arg_buffer_.set(pos, val);
-
       }
 
       //forward handles directly:
@@ -405,6 +429,19 @@ namespace viennacl
 #endif
         arg_buffer_.set(pos, temp);
       }
+      
+      void arg(unsigned int pos, const viennacl::compatible_handle& h)
+      {
+        //const viennacl::backend::mem_handle& mem_handle = (const viennacl::backend::mem_handle&)h;
+        arg(pos, ((const viennacl::hsa_compatible_handle&)h).hsa_handle().get());
+      }
+      
+      /* void arg(unsigned int pos, viennacl::native_handle_type* h)
+       {
+         viennacl::tools::shared_ptr<char>* ptr = (viennacl::tools::shared_ptr<char>*)h;
+         arg(pos,*ptr);
+       }*/
+
 
 
       //local buffer argument:
@@ -417,6 +454,12 @@ namespace viennacl
         std::cout << "ViennaCL: Setting local memory kernel argument of size " << size << " bytes at pos " << pos << " for kernel " << name_ << std::endl;
 #endif
         arg_buffer_.set_local(pos, size);
+      }
+      
+      template <class WITH_HANDLE>
+      void arg( unsigned int pos, const WITH_HANDLE& obj)
+      {
+        arg(pos, obj.handle().hsa_handle());
       }
 
       /** @brief Convenience function for setting one kernel parameter */
