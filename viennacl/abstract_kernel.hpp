@@ -130,8 +130,8 @@ namespace viennacl
 
     virtual std::string const & name() const = 0;
     
-    typedef  viennacl::tools::shared_ptr< viennacl::compatible_handle > compatible_handle_ptr; 
-    virtual compatible_handle_ptr create_memory(int mem_flag, int size_in_bytes) = 0;    
+    
+    virtual compatible_handle create_memory(int mem_flag, int size_in_bytes) = 0;    
     
     /** @brief Convenience function for setting one kernel parameter */
     template<typename T0>

@@ -214,10 +214,7 @@ namespace viennacl
       
     public:      
       
-      compatible_handle_ptr create_memory(int/* mem_type*/, int byte_size) 
-      {
-        return viennacl::tools::shared_ptr<compatible_handle>((compatible_handle*)(new hsa_compatible_handle_impl(byte_size)));
-      }
+			compatible_handle create_memory(int/* mem_type*/, int byte_size);
 
     public:
       typedef vcl_size_t size_type;

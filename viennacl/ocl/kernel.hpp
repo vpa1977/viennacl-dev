@@ -53,7 +53,7 @@ namespace viennacl
 
       
     public:
-      inline compatible_handle_ptr create_memory(int mem_type, int byte_size); /* see context.hpp*/
+      inline viennacl::compatible_handle create_memory(int mem_type, int byte_size); /* see context.hpp*/
     public:
       typedef vcl_size_t            size_type;
 
@@ -171,12 +171,7 @@ namespace viennacl
         cl_int err = clSetKernelArg(handle_.get(), pos, sizeof(packed_cl_uint), (void*)&val);
         VIENNACL_ERR_CHECK(err);
       }
-      
-      void arg(unsigned int pos, const viennacl::compatible_handle& h)
-      {
-        arg(pos, h);
-      }
-      
+   
       /* void arg(unsigned int pos, viennacl::native_handle_type* h)
        {
          viennacl::ocl::handle<cl_mem>* ptr = (viennacl::ocl::handle<cl_mem>*)h;
@@ -285,6 +280,9 @@ namespace viennacl
         cl_int err = clSetKernelArg(handle_.get(), pos, sizeof(cl_mem), (void*)&temp);
         VIENNACL_ERR_CHECK(err);
       }
+
+			void arg(unsigned int pos, const viennacl::compatible_handle& h);
+
 
       /** @brief Returns the local work size at the respective dimension
       *

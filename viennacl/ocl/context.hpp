@@ -824,23 +824,6 @@ inline void viennacl::ocl::kernel::set_work_size_defaults()
   }
 }
 
-class opencl_compatible_handle_impl : public viennacl::opencl_compatible_handle
-{
-  const viennacl::ocl::handle<cl_mem> m_ref;
-public:
-  opencl_compatible_handle_impl(const viennacl::ocl::handle<cl_mem> ref) : m_ref(ref)
-  {}
-  viennacl::ocl::handle<cl_mem> const & opencl_handle() const
-  {
-    return m_ref;
-  }
-};
-
-inline viennacl::kernel::compatible_handle_ptr viennacl::ocl::kernel::create_memory(int mem_type, int byte_size)
-{
-  viennacl::ocl::handle<cl_mem> ocl_handle = context().create_memory(mem_type, byte_size);
-  return viennacl::tools::shared_ptr<compatible_handle>((compatible_handle*)(new opencl_compatible_handle_impl(ocl_handle)));
-}
 
 
 }

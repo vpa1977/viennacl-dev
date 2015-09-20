@@ -355,13 +355,13 @@ public:
         {
           if (tmpidx_.size() <= j)
             tmpidx_.push_back(kernels[k]->create_memory(CL_MEM_READ_WRITE, p_.num_groups*4));
-          kernels[k]->arg(n_arg++,*tmpidx_[j].get());
+          kernels[k]->arg(n_arg++,tmpidx_[j]);
           j++;
         }
 
         if (tmp_.size() <= i)
           tmp_.push_back(kernels[k]->create_memory(CL_MEM_READ_WRITE, p_.num_groups*scalartype_size));
-        kernels[k]->arg(n_arg++, *tmpidx_[j].get());
+        kernels[k]->arg(n_arg++, tmpidx_[j]);
         i++;
       }
       set_arguments(statements, *kernels[k], n_arg);
@@ -373,9 +373,8 @@ public:
   }
 
 private:
-  typedef  viennacl::tools::shared_ptr< viennacl::compatible_handle > compatible_handle_ptr;
-  std::vector< compatible_handle_ptr > tmp_;
-  std::vector< compatible_handle_ptr > tmpidx_;
+  std::vector< compatible_handle > tmp_;
+  std::vector< compatible_handle > tmpidx_;
 };
 
 }
