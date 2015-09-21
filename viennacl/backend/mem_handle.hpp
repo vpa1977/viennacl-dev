@@ -27,7 +27,7 @@
 #include "viennacl/forwards.h"
 #include "viennacl/tools/shared_ptr.hpp"
 #include "viennacl/backend/cpu_ram.hpp"
-#include "viennacl/compatible_handle.hpp"
+
 
 
 #ifdef VIENNACL_WITH_OPENCL
@@ -96,7 +96,7 @@ inline memory_types default_memory_type(memory_types new_memory_type) { return d
  * Instead, this class collects all the necessary conditional compilations.
  *
  */
-class mem_handle : public compatible_handle
+class mem_handle 
 {
 public:
   typedef viennacl::tools::shared_ptr<char>      ram_handle_type;
@@ -285,37 +285,37 @@ private:
 } //backend
 
 #ifdef VIENNACL_WITH_OPENCL
-inline viennacl::compatible_handle viennacl::ocl::kernel::create_memory(int mem_type, int byte_size)
+inline viennacl::backend::mem_handle viennacl::ocl::kernel::create_memory(int mem_type, int byte_size)
 {
 	viennacl::backend::mem_handle h;
 	viennacl::ocl::handle<cl_mem> ocl_handle = context().create_memory(mem_type, byte_size);
 	h.switch_active_handle_id(OPENCL_MEMORY);
 	h.opencl_handle() = ocl_handle;
+	h.opencl_handle().inc();
 	return h;
 }
 
-inline void viennacl::ocl::kernel::arg(unsigned int pos, const viennacl::compatible_handle& h)
+inline void viennacl::ocl::kernel::arg(unsigned int pos, const viennacl::backend::mem_handle& h)
 {
-	const viennacl::backend::mem_handle& handle = (const viennacl::backend::mem_handle&)h;
-	arg(pos, handle.opencl_handle());
+	arg(pos, h.opencl_handle());
 }
 
 #endif
 
 #ifdef VIENNACL_WITH_HSA
-inline viennacl::compatible_handle viennacl::hsa::kernel::create_memory(int mem_type, int byte_size)
+inline viennacl::backend::mem_handle viennacl::hsa::kernel::create_memory(int /* mem_type */, int byte_size)
 {
 	viennacl::backend::mem_handle h;
-	viennacl::ocl::handle<cl_mem> ocl_handle = context().create_memory(mem_type, byte_size);
 	h.switch_active_handle_id(HSA_MEMORY);
-	h.hsa_handle() = share_ptr<char>(new char[byte_size]);
+	h.hsa_handle() = viennacl::tools::shared_ptr<char>(new char[byte_size]);
+	h.hsa_handle().inc();
 	return h;
 }
 
-inline void viennacl::hsa::kernel::arg(unsigned int pos, const viennacl::compatible_handle& h)
+inline void viennacl::hsa::kernel::arg(unsigned int pos, const viennacl::backend::mem_handle& h)
 {
-	const viennacl::backend::mem_handle& handle = (const viennacl::backend::mem_handle&)h;
-	arg(pos, handle.hsa_handle());
+
+	arg(pos, h.hsa_handle());
 }
 
 #endif

@@ -296,7 +296,7 @@ namespace backend
       case MAIN_MEMORY:
         cpu_ram::memory_read(src_buffer.ram_handle(), src_offset, bytes_to_read, ptr, async);
         break;
-#ifdef VIENNACL_WTIH_HSA
+#ifdef VIENNACL_WITH_HSA
       case HSA_MEMORY:
     	cpu_ram::memory_read(src_buffer.hsa_handle(), src_offset, bytes_to_read, ptr, async);
     	break;
@@ -696,12 +696,13 @@ namespace backend
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
           viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.ram_handle().get());
           break;
+#ifdef VIENNACL_WITH_HSA          
         case HSA_MEMORY:
-		   if (handle_dst.raw_size() != handle_src.raw_size())
-			 viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
-		   viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.hsa_handle().get());
-		   break;
-
+          if (handle_dst.raw_size() != handle_src.raw_size())
+          viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));
+          viennacl::backend::memory_read(handle_src, 0, handle_src.raw_size(), handle_dst.hsa_handle().get());
+          break;
+#endif
         case OPENCL_MEMORY:
           if (handle_dst.raw_size() != handle_src.raw_size())
             viennacl::backend::memory_create(handle_dst, handle_src.raw_size(), viennacl::traits::context(handle_dst));

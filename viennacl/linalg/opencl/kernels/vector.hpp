@@ -112,7 +112,7 @@ private:
 public:
   static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
@@ -166,7 +166,7 @@ class vector_multi_inner_prod
 public:
   static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {
@@ -205,7 +205,7 @@ struct vector_element
 public:
   static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     if (handlers_map.find(h) == handlers_map.end())
     {

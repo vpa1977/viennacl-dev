@@ -287,6 +287,12 @@ vector_base<NumericT, SizeT, DistanceT>::vector_base(NumericT * ptr_to_mem, vien
     elements_.ram_handle().reset(reinterpret_cast<char*>(ptr_to_mem));
     elements_.ram_handle().inc(); //prevents that the user-provided memory is deleted once the vector object is destroyed.
   }
+  else if (mem_type == viennacl::HSA_MEMORY)
+  {
+	elements_.switch_active_handle_id(viennacl::HSA_MEMORY);
+	elements_.hsa_handle().reset(reinterpret_cast<char*>(ptr_to_mem));
+	elements_.hsa_handle().inc(); //prevents that the user-provided memory is deleted once the vector object is destroyed.
+  }
 
   elements_.raw_size(sizeof(NumericT) * vec_size);
 

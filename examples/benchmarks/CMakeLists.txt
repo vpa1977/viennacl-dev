@@ -12,6 +12,17 @@ if (ENABLE_UBLAS)
 endif (ENABLE_UBLAS)
 
 
+if (ENABLE_HSA) 
+ foreach(bench hsa)
+    add_executable(${bench}-bench-hsa ${bench}.cpp)
+    target_link_libraries(${bench}-bench-hsa ${OPENCL_LIBRARIES})
+    set_target_properties(${bench}-bench-hsa PROPERTIES COMPILE_FLAGS "-DVIENNACL_WITH_OPENCL")
+     target_link_libraries(${bench}-bench-hsa ${HSA_LIBRARY})
+     target_link_libraries(${bench}-bench-hsa ${HSA_LIBRARY_EXT})
+     target_link_libraries(${bench}-bench-hsa ${HSA_KMT})
+     set_target_properties(${bench}-bench-hsa PROPERTIES COMPILE_FLAGS "-DVIENNACL_WITH_OPENCL -DVIENNACL_WITH_HSA")
+  endforeach()
+endif(ENABLE_HSA)
 # Targets using OpenCL
 if (ENABLE_OPENCL)
 

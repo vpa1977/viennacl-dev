@@ -34,7 +34,7 @@
 #include "viennacl/ocl/device.hpp"
 #include "viennacl/ocl/local_mem.hpp"
 #include "viennacl/abstract_kernel.hpp"
-#include "viennacl/compatible_handle.hpp"
+#include "context.hpp"
 
 
 namespace viennacl
@@ -53,7 +53,7 @@ namespace viennacl
 
       
     public:
-      inline viennacl::compatible_handle create_memory(int mem_type, int byte_size); /* see context.hpp*/
+      inline viennacl::backend::mem_handle create_memory(int mem_type, int byte_size); /* see context.hpp*/
     public:
       typedef vcl_size_t            size_type;
 
@@ -281,7 +281,9 @@ namespace viennacl
         VIENNACL_ERR_CHECK(err);
       }
 
-			void arg(unsigned int pos, const viennacl::compatible_handle& h);
+			void arg(unsigned int pos, const viennacl::backend::mem_handle& h);
+
+      void enqueue();
 
 
       /** @brief Returns the local work size at the respective dimension

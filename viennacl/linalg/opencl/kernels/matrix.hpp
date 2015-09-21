@@ -540,7 +540,7 @@ private:
 public:
   static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
@@ -608,7 +608,7 @@ struct matrix_element
 public:
   static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())
@@ -695,7 +695,7 @@ class row_wise_reduction
 public:
   static device_specific::execution_handler<Context> & execution_handler(Context & ctx)
   {
-    static std::map<void*, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<void*, device_specific::execution_handler<Context> > handlers_map;
     void* key = ctx.handle().get();
     if (handlers_map.find(key) == handlers_map.end())
     {
@@ -725,7 +725,7 @@ class matrix_prod
 public:
   static device_specific::execution_handler<Context> & execution_handler(bool is_row_major, Context & ctx)
   {
-    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context>> handlers_map;
+    static std::map<std::pair<bool, void*>, device_specific::execution_handler<Context> > handlers_map;
     void* h = ctx.handle().get();
     std::pair<bool, void*> key(is_row_major, h);
     if (handlers_map.find(key) == handlers_map.end())

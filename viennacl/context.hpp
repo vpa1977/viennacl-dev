@@ -42,6 +42,13 @@ class context
 public:
   context() : mem_type_(viennacl::backend::default_memory_type())
   {
+#ifdef VIENNACL_WITH_HSA
+    if (mem_type_ == HSA_MEMORY)
+      hsa_context_ptr_ = &viennacl::hsa::current_context();
+    else
+      hsa_context_ptr_ = NULL;
+#endif
+    
 #ifdef VIENNACL_WITH_OPENCL
     if (mem_type_ == OPENCL_MEMORY)
       ocl_context_ptr_ = &viennacl::ocl::current_context();
@@ -49,12 +56,6 @@ public:
       ocl_context_ptr_ = NULL;
 #endif
 
-#ifdef VIENNACL_WITH_HSA
-    if (mem_type_ == HSA_MEMORY)
-      hsa_context_ptr_ = &viennacl::hsa::current_context();
-    else
-      hsa_context_ptr_ = NULL;
-#endif
 
   }
 

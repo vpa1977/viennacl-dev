@@ -228,7 +228,9 @@ public:
           throw std::runtime_error("unable to get queue size");
 
         hsa_queue_t* command_queue;
-        hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &command_queue);
+        status = hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &command_queue);
+        if (status != HSA_STATUS_SUCCESS)
+                  throw std::runtime_error("unable to create HSA queue");
 
         viennacl::hsa::command_queue queue(viennacl::hsa::handle<hsa_queue_t*>(command_queue, *this));
         queues_[dev.handle].push_back(queue);
@@ -855,6 +857,12 @@ public:
       global_work_size_[0] = 256 * 128;
       global_work_size_[1] = 0;
       global_work_size_[2] = 0;
+    }
+    
+    inline void viennacl::hsa::kernel::enqueue()
+    {
+      const viennacl::hsa::command_queue& queue = p_context_->get_queue();
+      viennacl::hsa::enqueue(*this, queue);
     }
 
   }

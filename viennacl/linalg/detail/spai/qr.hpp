@@ -483,11 +483,11 @@ void block_qr(std::vector<std::vector<unsigned int> > & g_I,
 
   qr_kernel.local_work_size(0, local_c_n);
   qr_kernel.global_work_size(0, local_c_n*256);
-  viennacl::ocl::enqueue(qr_kernel(g_A_I_J_vcl.handle(), g_A_I_J_vcl.handle1(), g_bv_vcl.handle(),
+  qr_kernel(g_A_I_J_vcl.handle(), g_A_I_J_vcl.handle1(), g_bv_vcl.handle(),
                                   v_vcl.handle(), g_A_I_J_vcl.handle2(),
                                   g_bv_vcl.handle1(), v_vcl.handle1(), g_is_update_vcl,
                                   viennacl::ocl::local_mem(static_cast<unsigned int>(sizeof(NumericT)*(local_r_n*local_c_n))),
-                                  static_cast<cl_uint>(g_I.size())));
+                                  static_cast<cl_uint>(g_I.size())).enqueue();
 
 }
 }

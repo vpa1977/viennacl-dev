@@ -33,7 +33,6 @@
 #include <vector>
 #include <map>
 #include <cstdlib>
-#include "viennacl/compatible_handle.hpp"
 #include "viennacl/ocl/forwards.h"
 #include "viennacl/ocl/error.hpp"
 #include "viennacl/ocl/handle.hpp"
@@ -796,6 +795,10 @@ inline viennacl::ocl::kernel & viennacl::ocl::program::get_kernel(std::string co
   //return kernels_[0];  //return a defined object
 }
 
+inline void viennacl::ocl::kernel::enqueue() 
+{
+  viennacl::ocl::enqueue(*this, context().get_queue());
+}
 
 inline void viennacl::ocl::kernel::set_work_size_defaults()
 {

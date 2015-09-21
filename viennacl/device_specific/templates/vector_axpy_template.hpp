@@ -150,7 +150,7 @@ public:
     cl_uint size = static_cast<cl_uint>(vector_size(lhs_most(statement.array(), statement.root()), up_to_internal_size_));
     kernel->arg(current_arg++, size);
     set_arguments(statements, *kernel, current_arg);
-    viennacl::ocl::enqueue(*kernel);
+    kernel->enqueue();
   }
 
 private:

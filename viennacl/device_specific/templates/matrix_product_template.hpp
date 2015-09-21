@@ -743,7 +743,7 @@ private:
     else
       kernel.arg(current_arg++, cl_uint(A_trans_=='N'?A.size2():A.size1()));
     set_arguments(statement, kernel, current_arg);
-    viennacl::ocl::enqueue(kernel);
+    kernel.enqueue();
 
   }
 

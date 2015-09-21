@@ -361,20 +361,21 @@ public:
 
         if (tmp_.size() <= i)
           tmp_.push_back(kernels[k]->create_memory(CL_MEM_READ_WRITE, p_.num_groups*scalartype_size));
-        kernels[k]->arg(n_arg++, tmpidx_[j]);
+        const viennacl::backend::mem_handle& h = tmp_[j];
+        kernels[k]->arg(n_arg++, h);
         i++;
       }
       set_arguments(statements, *kernels[k], n_arg);
     }
 
     for (unsigned int k = 0; k < 2; k++)
-      viennacl::ocl::enqueue(*kernels[k]);
+      kernels[k]->enqueue();
 
   }
 
 private:
-  std::vector< compatible_handle > tmp_;
-  std::vector< compatible_handle > tmpidx_;
+  std::vector< viennacl::backend::mem_handle > tmp_;
+  std::vector< viennacl::backend::mem_handle > tmpidx_;
 };
 
 }

@@ -167,7 +167,7 @@ namespace viennacl
       {
       }
 
-      handle(const HSA_TYPE something, const viennacl::hsa::context & c) :
+      handle(const HSA_TYPE& something, const viennacl::hsa::context & c) :
       h_(new wrapper<HSA_TYPE>(something)), p_context_(&c)
       {
         inc();

@@ -23,7 +23,7 @@ namespace viennacl
       
       compiler_helper() : CLOC_COMPILER(0)
       {
-        setenv("CLOC_COMPILER", "cloc.sh", 0);
+        setenv("CLOC_COMPILER", "/home/bsp/CLOC/bin/cloc.sh", 0);
         CLOC_COMPILER = getenv("CLOC_COMPILER");
       }
 

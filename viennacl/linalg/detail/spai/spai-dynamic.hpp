@@ -388,11 +388,11 @@ void block_q_multiplication(std::vector<std::vector<unsigned int> > const & g_J_
 
   block_q_kernel.local_work_size(0,      local_c_n);
   block_q_kernel.global_work_size(0, 128*local_c_n);
-  viennacl::ocl::enqueue(block_q_kernel(g_A_I_J_vcl.handle(), g_A_I_J_vcl.handle2(), g_A_I_J_u_vcl.handle(), g_A_I_J_u_vcl.handle2(),
+  block_q_kernel(g_A_I_J_vcl.handle(), g_A_I_J_vcl.handle2(), g_A_I_J_u_vcl.handle(), g_A_I_J_u_vcl.handle2(),
                                         g_bv_vcl.handle(),
                                         g_bv_vcl.handle1(), g_A_I_J_vcl.handle1(), g_A_I_J_u_vcl.handle1(), g_is_update_vcl,
                                         viennacl::ocl::local_mem(static_cast<unsigned int>(sizeof(NumericT)*(local_r_n*local_c_n))),
-                                        static_cast<cl_uint>(g_I.size())));
+                                        static_cast<cl_uint>(g_I.size())).enqueue();;
 }
 
 /** @brief Assembly of container of index row sets: I_q, row indices for new "QR block"

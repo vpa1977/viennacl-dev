@@ -153,7 +153,7 @@ public:
 
     set_arguments(statements, kernel, current_arg);
 
-    viennacl::ocl::enqueue(kernel);
+    kernel.enqueue();
   }
 
 

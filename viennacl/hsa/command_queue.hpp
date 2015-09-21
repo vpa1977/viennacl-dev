@@ -47,7 +47,7 @@ namespace viennacl
       {
       }
 
-      command_queue(viennacl::hsa::handle<hsa_queue_t*> h) : handle_(h)
+      command_queue(const viennacl::hsa::handle<hsa_queue_t*>& h) : handle_(h)
       {
       }
 

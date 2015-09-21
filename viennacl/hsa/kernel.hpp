@@ -197,24 +197,10 @@ namespace viennacl
     {
       template<typename KernelType>
       friend void enqueue(KernelType & k, viennacl::hsa::command_queue const & queue);
-        class hsa_compatible_handle_impl : public hsa_compatible_handle
-        {
-          viennacl::tools::shared_ptr<char> m_ref;
-        public:
-          hsa_compatible_handle_impl(int byte_size) 
-          {
-            char* ptr = new char[byte_size];
-            m_ref = viennacl::tools::shared_ptr<char>(ptr);
-          }
-          virtual ram_handle_type const & hsa_handle() const
-          {
-            return m_ref;
-          }
-        };
-      
+       
     public:      
       
-			compatible_handle create_memory(int/* mem_type*/, int byte_size);
+			viennacl::backend::mem_handle create_memory(int/* mem_type*/, int byte_size);
 
     public:
       typedef vcl_size_t size_type;
@@ -427,11 +413,7 @@ namespace viennacl
         arg_buffer_.set(pos, temp);
       }
       
-      void arg(unsigned int pos, const viennacl::compatible_handle& h)
-      {
-        //const viennacl::backend::mem_handle& mem_handle = (const viennacl::backend::mem_handle&)h;
-        arg(pos, ((const viennacl::hsa_compatible_handle&)h).hsa_handle().get());
-      }
+      void arg(unsigned int pos, const viennacl::backend::mem_handle & h); /* see viennacl/backend/mem_handle.hpp*/
       
       /* void arg(unsigned int pos, viennacl::native_handle_type* h)
        {
@@ -1419,6 +1401,8 @@ namespace viennacl
       {
         return *p_context_;
       }
+      
+      void enqueue();
 
     private:
 

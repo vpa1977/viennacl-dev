@@ -30,7 +30,6 @@
 #include <sstream>
 #include <assert.h>
 #include "viennacl/forwards.h"
-#include "viennacl/compatible_handle.hpp"
 #include "viennacl/tools/shared_ptr.hpp"
 
 namespace viennacl
@@ -38,9 +37,6 @@ namespace viennacl
   
   
   
-  
- // struct native_handle_type
-//  {};
 
 
   /** @brief Helper class for packing four cl_uint numbers into a uint4 type for access inside an OpenCL kernel.
@@ -98,8 +94,12 @@ namespace viennacl
     /** @brief Sets an unsigned long argument at the provided position */
     virtual void arg(unsigned int pos, cl_long val) = 0;
 
-    virtual void arg(unsigned int pos, const viennacl::compatible_handle& tmp) = 0;
-    //virtual void arg(unsigned int pos, viennacl::native_handle_type*) = 0;
+    virtual void arg(unsigned int pos, const viennacl::backend::mem_handle& tmp) = 0;
+    
+    
+    /** @brief enqueue kernel on the default queue
+     */
+    virtual void enqueue() = 0;
 
 
 
@@ -131,7 +131,7 @@ namespace viennacl
     virtual std::string const & name() const = 0;
     
     
-    virtual compatible_handle create_memory(int mem_flag, int size_in_bytes) = 0;    
+    virtual viennacl::backend::mem_handle create_memory(int mem_flag, int size_in_bytes) = 0;    
     
     /** @brief Convenience function for setting one kernel parameter */
     template<typename T0>
