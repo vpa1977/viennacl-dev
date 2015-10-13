@@ -158,9 +158,9 @@ namespace viennacl
         VIENNACL_ERR_CHECK(err);
       }
 
-      void arg(unsigned int pos, const packed_cl_uint& val)
+      void arg(unsigned int pos, const viennacl::ocl::packed_cl_uint& val)
       {
-        arg(pos,val);
+        arg(pos,(const viennacl::packed_cl_uint&)val);
       }
       /** @brief Sets four packed unsigned integers as argument at the provided position */
       void arg(unsigned int pos, const viennacl::packed_cl_uint& val)

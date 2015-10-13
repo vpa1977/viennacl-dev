@@ -235,6 +235,24 @@ public:
 
   //////////////////// create queues ////////////////////////////////
 
+#ifdef VIENNACL_WITH_OPENCL20
+	/** @brief Adds a device queue on specified device */
+	void add_device_queue(cl_device_id dev)
+	{
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
+		std::cout << "ViennaCL: Adding new device queue for device " << dev << " to context " << h_ << std::endl;
+#endif
+		cl_int err;
+		cl_queue_properties qprop[] = { CL_QUEUE_PROPERTIES, (CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT),
+			CL_QUEUE_SIZE, 128 * 1024 , 0
+		}; // CL_QUEUE_ON_DEVICE
+		cl_command_queue my_device_q = clCreateCommandQueueWithProperties(h_.get(), dev, qprop, &err);
+		VIENNACL_ERR_CHECK(err);
+		viennacl::ocl::handle<cl_command_queue> temp(my_device_q, *this);
+		queues_[dev].push_back(viennacl::ocl::command_queue(temp));
+	}
+#endif
+
   /** @brief Adds an existing queue for the given device to the context */
   void add_queue(cl_device_id dev, cl_command_queue q)
   {
