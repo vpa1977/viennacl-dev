@@ -47,7 +47,7 @@ namespace viennacl
     virtual bool double_support() const = 0;
     virtual size_t max_compute_units() const = 0;
     virtual const std::string double_support_extension() const = 0;
-    virtual size_t local_mem_size() const = 0;
+		virtual cl_ulong local_mem_size() const = 0;
     virtual size_t max_work_group_size() const = 0;
     virtual std::vector<vcl_size_t> max_work_item_sizes() const = 0;
     virtual int vendor_id() const = 0;
