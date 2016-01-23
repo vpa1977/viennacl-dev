@@ -123,3 +123,4 @@ install_manifest.txt
 /nbproject/private/CodeAssistancePathMapper.properties
 /examples/tutorial/custom-kernels
 /examples/tutorial/custom-context
+*.hpp~
