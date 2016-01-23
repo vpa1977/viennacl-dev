@@ -289,9 +289,13 @@ vector_base<NumericT, SizeT, DistanceT>::vector_base(NumericT * ptr_to_mem, vien
   }
   else if (mem_type == viennacl::HSA_MEMORY)
   {
+#ifdef VIENNACL_WITH_HSA
 	elements_.switch_active_handle_id(viennacl::HSA_MEMORY);
 	elements_.hsa_handle().reset(reinterpret_cast<char*>(ptr_to_mem));
 	elements_.hsa_handle().inc(); //prevents that the user-provided memory is deleted once the vector object is destroyed.
+#else
+		throw std::runtime_error("HSA not available");
+#endif
   }
 
   elements_.raw_size(sizeof(NumericT) * vec_size);

@@ -143,6 +143,7 @@ namespace viennacl
           } else
           {
             uint64_t local_ptr = group_segment_size + local_offset;
+            ref.ptr = ptr_ + cur_offset;
             memcpy(ref.ptr, &local_ptr, sizeof (uint64_t));
             local_offset += ref.size;
             cur_offset += sizeof (uint64_t);

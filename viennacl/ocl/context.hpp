@@ -62,9 +62,9 @@ public:
 public:  
   
   context() : initialized_(false),
-    device_type_(CL_DEVICE_TYPE_DEFAULT),
+    device_type_(CL_DEVICE_TYPE_ALL),
     current_device_id_(0),
-    default_device_num_(1),
+    default_device_num_(5),
     pf_index_(0),
     current_queue_id_(0)
   {
@@ -265,7 +265,7 @@ public:
   }
 
   /** @brief Adds a queue for the given device to the context */
-  void add_queue(cl_device_id dev)
+  size_t add_queue(cl_device_id dev)
   {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_CONTEXT)
     std::cout << "ViennaCL: Adding new queue for device " << dev << " to context " << h_ << std::endl;
@@ -279,10 +279,11 @@ public:
     VIENNACL_ERR_CHECK(err);
 
     queues_[dev].push_back(viennacl::ocl::command_queue(temp));
+		return queues_[dev].size() - 1;
   }
 
   /** @brief Adds a queue for the given device to the context */
-  void add_queue(viennacl::ocl::device d) { add_queue(d.id()); }
+  size_t add_queue(viennacl::ocl::device d) { return add_queue(d.id()); }
 
   //get queue for default device:
   viennacl::ocl::command_queue & get_queue()
@@ -816,6 +817,7 @@ inline viennacl::ocl::kernel & viennacl::ocl::program::get_kernel(std::string co
 inline void viennacl::ocl::kernel::enqueue() 
 {
   viennacl::ocl::enqueue(*this, context().get_queue());
+	
 }
 
 inline void viennacl::ocl::kernel::set_work_size_defaults()

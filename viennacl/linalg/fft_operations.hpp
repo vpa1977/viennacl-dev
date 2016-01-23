@@ -31,6 +31,10 @@
 #include "viennacl/linalg/opencl/fft_operations.hpp"
 #include "viennacl/linalg/opencl/kernels/fft.hpp"
 #endif
+#ifdef VIENNACL_WITH_HSA
+#include "viennacl/linalg/hsa/fft_operations.hpp"
+#endif
+
 
 #ifdef VIENNACL_WITH_CUDA
 #include "viennacl/linalg/cuda/fft_operations.hpp"
@@ -63,6 +67,11 @@ void direct(viennacl::vector<NumericT, AlignmentV> const & in,
   case viennacl::OPENCL_MEMORY:
     viennacl::linalg::opencl::direct(viennacl::traits::opencl_handle(in), viennacl::traits::opencl_handle(out), size, stride, batch_num, sign,data_order);
     break;
+#endif
+#ifdef VIENNACL_WITH_HSA
+  case viennacl::HSA_MEMORY:
+	  viennacl::linalg::hsa::direct(in, out, size, stride, batch_num,sign,data_order);
+	  break;
 #endif
 
 #ifdef VIENNACL_WITH_CUDA

@@ -1,6 +1,3 @@
-#ifndef VIENNACL_LINALG_HSA_FFT_OPERATIONS_HPP_
-#define VIENNACL_LINALG_HSA_FFT_OPERATIONS_HPP_
-
 /* =========================================================================
    Copyright (c) 2010-2015, Institute for Microelectronics,
    Institute for Analysis and Scientific Computing,
@@ -21,6 +18,9 @@
 /** @file viennacl/linalg/opencl/fft_operations.hpp
  @brief Implementations of Fast Furier Transformation using OpenCL
  */
+#ifndef VIENNACL_LINALG_HSA_FFT_OPERATIONS_HPP_
+
+#define VIENNACL_LINALG_HSA_FFT_OPERATIONS_HPP_
 
 #include "viennacl/forwards.h"
 #include "viennacl/hsa/device.hpp"
@@ -34,6 +34,7 @@
 
 #include <viennacl/vector.hpp>
 #include <viennacl/matrix.hpp>
+#include <viennacl/traits/handle.hpp>
 
 #include <cmath>
 #include <stdexcept>
@@ -52,13 +53,13 @@ namespace hsa
  * Works on any sizes of data.
  * Serial implementation has o(n^2) complexity
  */
-template<typename NumericT>
-void direct(hsa_handle_type const & in,
-            hsa_handle_type const & out,
+template<typename NumericT, unsigned int AlignmentV>
+void direct(viennacl::vector<NumericT, AlignmentV> const & in,
+            viennacl::vector<NumericT, AlignmentV> const & out,
             vcl_size_t size, vcl_size_t stride, vcl_size_t batch_num, NumericT sign = NumericT(-1),
             viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::DATA_ORDER data_order = viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::ROW_MAJOR)
 {
-  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(in.context());
+  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(viennacl::traits::context(in).hsa_context());
   viennacl::linalg::opencl::kernels::fft<NumericT, viennacl::hsa::context>::init(ctx);
 
   std::string program_string = viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, row_major>::program_name();
@@ -83,13 +84,13 @@ void direct(hsa_handle_type const & in,
  * This function performs reorder of input data. Indexes are sorted in bit-reversal order.
  * Such reordering should be done before in-place FFT.
  */
-template<typename NumericT>
-void reorder(hsa_handle_type const & in,
+template<typename NumericT, unsigned int AlignmentV>
+void reorder(viennacl::vector<NumericT, AlignmentV> const & in,
              vcl_size_t size, vcl_size_t stride,
              vcl_size_t bits_datasize, vcl_size_t batch_num,
              viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::DATA_ORDER data_order = viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::ROW_MAJOR)
 {
-  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(in.context());
+  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(viennacl::traits::context(in).hsa_context());
   viennacl::linalg::opencl::kernels::fft<NumericT, viennacl::hsa::context>::init(ctx);
 
   std::string program_string = viennacl::linalg::opencl::kernels::matrix_legacy<NumericT, row_major>::program_name();
@@ -114,13 +115,13 @@ void reorder(hsa_handle_type const & in,
  * Serial implementation has o(n * lg n) complexity.
  * This is a Cooley-Tukey algorithm
  */
-template<typename NumericT>
-void radix2(hsa_handle_type const & in,
+template<typename NumericT, unsigned int AlignmentV>
+void radix2(viennacl::vector<NumericT, AlignmentV> const & in,
             vcl_size_t size, vcl_size_t stride,
             vcl_size_t batch_num, NumericT sign = NumericT(-1),
             viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::DATA_ORDER data_order = viennacl::linalg::host_based::detail::fft::FFT_DATA_ORDER::ROW_MAJOR)
 {
-  viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(in.context());
+    viennacl::hsa::context & ctx = const_cast<viennacl::hsa::context &>(viennacl::traits::context(in).hsa_context());
   viennacl::linalg::opencl::kernels::fft<NumericT, viennacl::hsa::context>::init(ctx);
 
   assert(batch_num != 0 && bool("batch_num must be larger than 0"));

@@ -88,7 +88,7 @@ namespace ocl
 
     //////////////////// get device //////////////////
     /** @brief Returns the available devices of the supplied device type */
-    std::vector<device> devices(cl_device_type dtype = CL_DEVICE_TYPE_DEFAULT)
+    std::vector<device> devices(cl_device_type dtype = CL_DEVICE_TYPE_ALL)
     {
       cl_int err;
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_DEVICE)
