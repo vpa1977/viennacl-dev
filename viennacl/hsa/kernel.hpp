@@ -368,7 +368,7 @@ namespace viennacl
       void arg(unsigned int pos, const viennacl::tools::shared_ptr<char>& tmp)
       {
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
-        std::cout << "ViennaCL: Setting memory kernel argument " << h << " at pos " << pos << " for kernel " << name_ << std::endl;
+        std::cout << "ViennaCL: Setting memory kernel argument " << tmp.get() << " at pos " << pos << " for kernel " << name_ << std::endl;
 #endif
 
         arg(pos, (const void*) tmp.get());
