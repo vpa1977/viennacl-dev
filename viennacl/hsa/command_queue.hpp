@@ -31,6 +31,8 @@
 #include "viennacl/hsa/device.hpp"
 #include "viennacl/hsa/handle.hpp"
 
+#include <sys/types.h>
+
 namespace viennacl
 {
   namespace hsa
@@ -43,11 +45,11 @@ namespace viennacl
     {
     public:
 
-      command_queue()
+      command_queue() : last_index_(0)
       {
       }
 
-      command_queue(const viennacl::hsa::handle<hsa_queue_t*>& h) : handle_(h)
+      command_queue(const viennacl::hsa::handle<hsa_queue_t*>& h) : handle_(h), last_index_(0)
       {
       }
 
@@ -56,6 +58,7 @@ namespace viennacl
       command_queue(command_queue const & other)
       {
         handle_ = other.handle_;
+        last_index_ = other.last_index_;
       }
 
       //assignment operator:
@@ -72,10 +75,11 @@ namespace viennacl
       }
 
       /** @brief Waits until all kernels in the queue have finished their execution */
-      void finish() const
+      void finish()
       {
-        if (true)
-          return;
+#ifdef VIENNACL_HSA_WAIT_KERNEL
+    	  	 if (true) return;
+#endif
 
         hsa_signal_t signal;
 
@@ -83,30 +87,78 @@ namespace viennacl
         std::cout << "ViennaCL: queue flush " << std::endl;
 #endif
 
-
+        uint64_t index = hsa_queue_load_write_index_relaxed(handle_.get());
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+        std::cout << "Finish default queue index " << index << " last_index " << last_index_ << std::endl;
+#endif
+        if (index == last_index_)
+        	return;
+        last_index_ = index;
+		const uint32_t queueMask =handle_.get()->size - 1;
+#if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+		std::cout << "Need sync with device" << std::endl;
+#endif
         hsa_signal_create(1, 0, NULL, &signal);
 
-        uint64_t index = hsa_queue_load_write_index_relaxed(handle_.get());
-        hsa_barrier_or_packet_t barrier;
-        memset(&barrier, 0, sizeof (barrier));
-        barrier.header = HSA_PACKET_TYPE_BARRIER_AND;
-        barrier.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
-        barrier.header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
-        barrier.completion_signal = signal;
+        /* Obtain the write index for the command queue for this stream.  */
 
-        const uint32_t queue_mask = handle_.get()->size - 1;
-        ((hsa_barrier_or_packet_t*) (handle_.get()->base_address))[index & queue_mask] = barrier;
-        hsa_queue_store_write_index_relaxed(handle_.get(), index + 1);
-        hsa_signal_store_relaxed(handle_.get()->doorbell_signal, index);
-        hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_ACTIVE);
+		/* Define the barrier packet to be at the calculated queue index address.  */
+		hsa_barrier_or_packet_t* barrier = &(((hsa_barrier_or_packet_t*)(handle_.get()->base_address))[index&queueMask]);
+		memset(barrier, 0, sizeof(hsa_barrier_or_packet_t));
+		barrier->header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
+		barrier->header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
+		barrier->header |= 1 << HSA_PACKET_HEADER_BARRIER;
+		barrier->header |= HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE;
+		barrier->completion_signal = signal;
+
+		/* Increment write index and ring doorbell to dispatch the kernel.  */
+		hsa_queue_store_write_index_relaxed(handle_.get(), index+1);
+		hsa_signal_store_relaxed(handle_.get()->doorbell_signal, index);
+
+		/* Wait on completion signal til kernel is finished.  */
+		hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, UINT64_MAX, HSA_WAIT_STATE_BLOCKED);
+
         hsa_signal_destroy(signal);
 
       }
 
-      /** @brief Waits until all kernels in the queue have started their execution */
-      void flush() const
+      void submit_barrier() const
       {
+#ifdef VIENNACL_HSA_WAIT_KERNEL
+    	  	 if (true) return;
+#endif
 
+ #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
+		 std::cout << "ViennaCL: queue barrir " << std::endl;
+ #endif
+
+		 uint64_t index = hsa_queue_load_write_index_relaxed(handle_.get());
+		const uint32_t queueMask =handle_.get()->size - 1;
+
+
+
+
+		 /* Obtain the write index for the command queue for this stream.  */
+
+		/* Define the barrier packet to be at the calculated queue index address.  */
+		hsa_barrier_or_packet_t* barrier = &(((hsa_barrier_or_packet_t*)(handle_.get()->base_address))[index&queueMask]);
+		memset(barrier, 0, sizeof(hsa_barrier_or_packet_t));
+		barrier->header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE;
+		barrier->header |= HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
+		barrier->header |= 1 << HSA_PACKET_HEADER_BARRIER;
+		barrier->header |= HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE;
+//		barrier->completion_signal = -1;
+
+		/* Increment write index and ring doorbell to dispatch the kernel.  */
+		hsa_queue_store_write_index_relaxed(handle_.get(), index+1);
+		hsa_signal_store_relaxed(handle_.get()->doorbell_signal, index);
+
+	   }
+
+      /** @brief Waits until all kernels in the queue have started their execution */
+      void flush()
+      {
+    	  finish();
       }
 
       viennacl::hsa::handle<hsa_queue_t*> const & handle() const
@@ -120,7 +172,7 @@ namespace viennacl
       }
 
     private:
-
+      uint64_t last_index_;
       viennacl::hsa::handle<hsa_queue_t*> handle_;
     };
 
