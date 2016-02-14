@@ -226,15 +226,8 @@ public:
         hsa_status_t status = hsa_agent_get_info(dev, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_size);
         if (status != HSA_STATUS_SUCCESS)
           throw std::runtime_error("unable to get queue size");
-        struct cb
-        {
-        	static void (callback)(hsa_status_t status, hsa_queue_t *source, void *data)
-				{
-        			std::cout << "Queue event " << status << std::endl;
-				}
-        };
         hsa_queue_t* command_queue;
-        status = hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_SINGLE, &cb::callback, NULL, UINT32_MAX, UINT32_MAX, &command_queue);
+        status = hsa_queue_create(dev, queue_size, HSA_QUEUE_TYPE_SINGLE, NULL, NULL, UINT32_MAX, UINT32_MAX, &command_queue);
         if (status != HSA_STATUS_SUCCESS)
                   throw std::runtime_error("unable to create HSA queue");
 

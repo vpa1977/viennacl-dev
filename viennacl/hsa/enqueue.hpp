@@ -58,16 +58,17 @@ namespace viennacl
 #endif
 
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
-      hsa_signal_t signal;
-      hsa_signal_create(1, 0, NULL, &signal);
+      hsa_signal_t signal = queue.completion_signal();
+      hsa_signal_store_relaxed(signal,1);
 #endif
 
 
       // get command queue from context
       hsa_queue_t* command_queue = queue.handle().get();
 
-
-
+#ifndef VIENNACL_HSA_WAIT_KERNEL
+      const_cast<viennacl::hsa::command_queue&>(queue).sync_queue();
+#endif
 
       // before snack
 
@@ -83,6 +84,8 @@ namespace viennacl
 
 	#if defined(VIENNACL_HSA_WAIT_KERNEL)
       this_aql->completion_signal = signal;
+	#else
+      this_aql->completion_signal = queue.completion_signal();
 	#endif
 
       /*  Process lparm values */
@@ -134,15 +137,18 @@ namespace viennacl
       /* Increment write index and ring doorbell to dispatch the kernel.  */
       hsa_queue_store_write_index_relaxed(command_queue, index+1);
 
-      hsa_signal_store_relaxed(command_queue->doorbell_signal, index);
+
 
 
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
 
+      hsa_signal_store_relaxed(command_queue->doorbell_signal, index);
       hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_BLOCKED);
 
-      hsa_signal_destroy(signal);
+     // hsa_signal_destroy(signal);
 #else
+      const_cast<viennacl::hsa::command_queue&>(queue).dispatch_queue();
+
 #endif        
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
