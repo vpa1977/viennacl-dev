@@ -254,11 +254,13 @@ namespace viennacl
       hsa_signal_t completion_signal() const { return completion_signal_; }
 
     private:
+      uint64_t last_index_;
       long signal_counter_;
       bool sync_;
       hsa_signal_t completion_signal_;
-      uint64_t last_index_;
+
       viennacl::hsa::handle<hsa_queue_t*> handle_;
+
     };
 
   } //namespace hsa

@@ -143,7 +143,7 @@ namespace viennacl
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
 
       hsa_signal_store_relaxed(command_queue->doorbell_signal, index);
-      hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_BLOCKED);
+      hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_ACTIVE);
 
      // hsa_signal_destroy(signal);
 #else

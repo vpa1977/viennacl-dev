@@ -700,6 +700,57 @@ public:
     //generate block information for CSR-adaptive:
     generate_row_block_information();
   }
+
+	/** @brief Wraps existing OpenCL buffers holding the compressed sparse row information.
+	*
+	* @param mem_row_buffer   A buffer consisting of unsigned integers (cl_uint) holding the entry points for each row (0-based indexing). (rows+1) elements, the last element being 'nonzeros'.
+	* @param mem_col_buffer   A buffer consisting of unsigned integers (cl_uint) holding the column index for each nonzero entry as stored in 'mem_elements'.
+	* @param mem_elements     A buffer holding the floating point numbers for nonzeros. OpenCL type of elements must match the template 'NumericT'.
+	* @param rows             Number of rows in the matrix to be wrapped.
+	* @param cols             Number of columns to be wrapped.
+	* @param nonzeros         Number of nonzero entries in the matrix.
+	* @param row_blocks			  Pre computed row block values
+	*/
+	explicit compressed_matrix(cl_mem mem_row_buffer, cl_mem mem_col_buffer, cl_mem mem_elements,
+		vcl_size_t rows, vcl_size_t cols, vcl_size_t nonzeros, 
+		cl_mem row_blocks, 
+		int num_row_blocks,
+		viennacl::context ctx) :
+		rows_(rows), cols_(cols), nonzeros_(nonzeros), row_block_num_(0)
+	{
+#ifdef VIENNACL_WITH_OPENCL
+		if (ctx.memory_type() == OPENCL_MEMORY)
+		{
+			row_buffer_.opencl_handle().context(ctx.opencl_context());
+			col_buffer_.opencl_handle().context(ctx.opencl_context());
+			elements_.opencl_handle().context(ctx.opencl_context());
+			row_blocks_.opencl_handle().context(ctx.opencl_context());
+		}
+#endif
+
+		row_buffer_.switch_active_handle_id(viennacl::OPENCL_MEMORY);
+
+		row_buffer_.opencl_handle() = mem_row_buffer;
+		row_buffer_.opencl_handle().inc();             //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		row_buffer_.raw_size(sizeof(cl_uint) * (rows + 1));
+
+		col_buffer_.switch_active_handle_id(viennacl::OPENCL_MEMORY);
+		col_buffer_.opencl_handle() = mem_col_buffer;
+		col_buffer_.opencl_handle().inc();             //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		col_buffer_.raw_size(sizeof(cl_uint) * nonzeros);
+
+		elements_.switch_active_handle_id(viennacl::OPENCL_MEMORY);
+		elements_.opencl_handle() = mem_elements;
+		elements_.opencl_handle().inc();               //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		elements_.raw_size(sizeof(NumericT) * nonzeros);
+
+		row_blocks_.switch_active_handle_id(viennacl::OPENCL_MEMORY);
+		row_blocks_.opencl_handle() = row_blocks;
+		row_blocks_.opencl_handle().inc();
+		row_blocks_.raw_size(sizeof(cl_uint) * (num_row_blocks+1));
+		row_block_num_ = num_row_blocks;
+	}
+
 #endif
 
 #ifdef  VIENNACL_WITH_HSA
@@ -713,7 +764,10 @@ public:
     * @param nonzeros         Number of nonzero entries in the matrix.
     */
   explicit compressed_matrix(void* mem_row_buffer, void*mem_col_buffer, void* mem_elements,
-	  vcl_size_t rows, vcl_size_t cols, vcl_size_t nonzeros) :
+	  vcl_size_t rows, vcl_size_t cols,
+		vcl_size_t nonzeros,
+		void * row_blocks, 
+		int num_row_blocks) :
     rows_(rows), cols_(cols), nonzeros_(nonzeros), row_block_num_(0)
   {
     row_buffer_.switch_active_handle_id(viennacl::HSA_MEMORY);
@@ -732,8 +786,38 @@ public:
     elements_.raw_size(sizeof(NumericT) * nonzeros);
 
     //generate block information for CSR-adaptive:
-    generate_row_block_information();
+		row_blocks_.switch_active_handle_id(viennacl::HSA_MEMORY);
+		row_blocks_.hsa_handle() = viennacl::tools::shared_ptr<char>((char*)row_blocks);
+		row_blocks_.hsa_handle().inc();
+		row_blocks_.raw_size(sizeof(cl_uint) * (num_row_blocks + 1));
+		row_block_num_ = num_row_blocks;
+
+    
   }
+
+	explicit compressed_matrix(void* mem_row_buffer, void*mem_col_buffer, void* mem_elements,
+		vcl_size_t rows, vcl_size_t cols,
+		vcl_size_t nonzeros) :
+		rows_(rows), cols_(cols), nonzeros_(nonzeros), row_block_num_(0)
+	{
+		row_buffer_.switch_active_handle_id(viennacl::HSA_MEMORY);
+		row_buffer_.hsa_handle() = viennacl::tools::shared_ptr<char>((char*)mem_row_buffer);
+		row_buffer_.hsa_handle().inc();             //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		row_buffer_.raw_size(sizeof(cl_uint) * (rows + 1));
+
+		col_buffer_.switch_active_handle_id(viennacl::HSA_MEMORY);
+		col_buffer_.hsa_handle() = viennacl::tools::shared_ptr<char>((char*)mem_col_buffer);
+		col_buffer_.hsa_handle().inc();             //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		col_buffer_.raw_size(sizeof(cl_uint) * nonzeros);
+
+		elements_.switch_active_handle_id(viennacl::HSA_MEMORY);
+		elements_.hsa_handle() = viennacl::tools::shared_ptr<char>((char*)mem_elements);
+		elements_.hsa_handle().inc();               //prevents that the user-provided memory is deleted once the matrix object is destroyed.
+		elements_.raw_size(sizeof(NumericT) * nonzeros);
+
+		//generate block information for CSR-adaptive:
+		generate_row_block_information();
+	}
 #endif
 
 

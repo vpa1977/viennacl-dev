@@ -184,6 +184,16 @@ matrix_base<NumericT, SizeT, DistanceT>::matrix_base(NumericT * ptr_to_mem, vien
     elements_.ram_handle().reset(reinterpret_cast<char*>(ptr_to_mem));
     elements_.ram_handle().inc(); //prevents that the user-provided memory is deleted once the vector object is destroyed.
   }
+  else if (mem_type == viennacl::HSA_MEMORY)
+   {
+#ifdef VIENNACL_WITH_HSA
+     elements_.switch_active_handle_id(viennacl::HSA_MEMORY);
+     elements_.ram_handle().reset(reinterpret_cast<char*>(ptr_to_mem));
+     elements_.ram_handle().inc(); //prevents that the user-provided memory is deleted once the vector object is destroyed.
+#else
+     throw std::runtime_error("hsa not available");
+#endif
+   }
 
   elements_.raw_size(sizeof(NumericT) * internal_size());
 }

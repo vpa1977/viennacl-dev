@@ -146,11 +146,11 @@ void radix2(viennacl::vector<NumericT, AlignmentV> const & in,
   }
   else
   {
-    viennacl::linalg::opencl::reorder<NumericT>(in, size, stride, bits_datasize, batch_num);
-
+	 viennacl::hsa::kernel & k = ctx.get_kernel(program_string, "fft_radix2");
+     viennacl::linalg::hsa::reorder<NumericT>(in, size, stride, bits_datasize, batch_num);
     for (vcl_size_t step = 0; step < bits_datasize; step++)
     {
-      viennacl::hsa::kernel & k = ctx.get_kernel(program_string, "fft_radix2");
+
       viennacl::hsa::enqueue(k(in,
                                static_cast<cl_uint>(step), static_cast<cl_uint>(bits_datasize),
                                static_cast<cl_uint>(size), static_cast<cl_uint>(stride),

@@ -183,6 +183,13 @@ void radix2(viennacl::matrix<NumericT, viennacl::row_major, AlignmentV> & in, vc
     break;
 #endif
 
+#ifdef VIENNACL_WITH_HSA
+  case viennacl::HSA_MEMORY:
+    viennacl::linalg::hsa::radix2(in, size, stride, batch_num, sign,data_order);
+    break;
+#endif
+
+
 #ifdef VIENNACL_WITH_CUDA
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::radix2(in, size, stride, batch_num, sign, data_order);
@@ -224,6 +231,12 @@ void radix2(viennacl::vector<NumericT, AlignmentV>& in, vcl_size_t size, vcl_siz
   case viennacl::CUDA_MEMORY:
     viennacl::linalg::cuda::radix2(in, size, stride, batch_num, sign,data_order);
     break;
+#endif
+
+#ifdef VIENNACL_WITH_HSA
+  case viennacl::HSA_MEMORY:
+	  viennacl::linalg::hsa::radix2(in, size, stride, batch_num, sign,data_order);
+	  break;
 #endif
 
   case viennacl::MEMORY_NOT_INITIALIZED:
