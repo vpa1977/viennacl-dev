@@ -79,13 +79,13 @@ namespace viennacl
       /* Find the queue index address to write the packet info into.  */
       const uint32_t queueMask = command_queue->size - 1;
       hsa_kernel_dispatch_packet_t* this_aql = &(((hsa_kernel_dispatch_packet_t*)(command_queue->base_address))[index&queueMask]);
-
+      memset(this_aql, 0, sizeof(hsa_kernel_dispatch_packet_t));
       /*  FIXME: We need to check for queue overflow here. */
 
 	#if defined(VIENNACL_HSA_WAIT_KERNEL)
       this_aql->completion_signal = signal;
 	#else
-      this_aql->completion_signal = queue.completion_signal();
+    //  this_aql->completion_signal = queue.completion_signal();
 	#endif
 
       /*  Process lparm values */
@@ -127,24 +127,19 @@ namespace viennacl
 
 
       /*  Prepare and set the packet header */
-#ifndef VIENNACL_HSA_WAIT_KERNEL
-      this_aql->header |= 1 << HSA_PACKET_HEADER_BARRIER; // use ordered execution
-#endif
       this_aql->header |= HSA_FENCE_SCOPE_SYSTEM<< HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE; // scope system - update to define
       this_aql->header |= HSA_FENCE_SCOPE_SYSTEM<< HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
-      __atomic_store_n((uint8_t*)(&this_aql->header), (uint8_t)HSA_PACKET_TYPE_KERNEL_DISPATCH, __ATOMIC_RELEASE);
+      this_aql->header |= 1 << HSA_PACKET_HEADER_BARRIER; // use ordered execution
+      this_aql->header |= HSA_PACKET_TYPE_KERNEL_DISPATCH;
+      __atomic_store_n((uint8_t*)(&this_aql->header), (uint8_t)(HSA_PACKET_TYPE_KERNEL_DISPATCH | (1 << HSA_PACKET_HEADER_BARRIER)), __ATOMIC_RELEASE);
 
       /* Increment write index and ring doorbell to dispatch the kernel.  */
       hsa_queue_store_write_index_relaxed(command_queue, index+1);
-
-
+      hsa_signal_store_relaxed(command_queue->doorbell_signal, index);
 
 
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
-
-      hsa_signal_store_relaxed(command_queue->doorbell_signal, index);
-      hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_ACTIVE);
-
+      hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_BLOCKED);
      // hsa_signal_destroy(signal);
 #else
       const_cast<viennacl::hsa::command_queue&>(queue).dispatch_queue();

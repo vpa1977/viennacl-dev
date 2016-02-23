@@ -53,7 +53,7 @@ namespace viennacl
         std::vector<char> binary;
         binary.resize(ftell(tmp));
         rewind(tmp);
-        fread(&binary[0], binary.size(), 1, tmp);
+        err = fread(&binary[0], binary.size(), 1, tmp);
         fclose(tmp);
         remove(name.c_str());
         return binary;
