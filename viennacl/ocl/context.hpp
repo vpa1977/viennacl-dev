@@ -253,6 +253,7 @@ public:
 	}
 #endif
 
+	
   /** @brief Adds an existing queue for the given device to the context */
   void add_queue(cl_device_id dev, cl_command_queue q)
   {

@@ -58,8 +58,10 @@ namespace viennacl
 #endif
 
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
-      hsa_signal_t signal = queue.completion_signal();
-      hsa_signal_store_relaxed(signal,1);
+      hsa_signal_t signal;
+      hsa_signal_create(1, 0, NULL, &signal);
+#else
+      hsa_signal_t signal = const_cast<viennacl::hsa::command_queue&>(queue).completion_signal();
 #endif
 
 
@@ -85,7 +87,7 @@ namespace viennacl
 	#if defined(VIENNACL_HSA_WAIT_KERNEL)
       this_aql->completion_signal = signal;
 	#else
-    //  this_aql->completion_signal = queue.completion_signal();
+      this_aql->completion_signal = signal;
 	#endif
 
       /*  Process lparm values */
@@ -140,9 +142,9 @@ namespace viennacl
 
 #if defined(VIENNACL_HSA_WAIT_KERNEL)
       hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, (uint64_t) - 1, HSA_WAIT_STATE_BLOCKED);
-     // hsa_signal_destroy(signal);
+      hsa_signal_destroy(signal);
 #else
-      const_cast<viennacl::hsa::command_queue&>(queue).dispatch_queue();
+      const_cast<viennacl::hsa::command_queue&>(queue).dispatch_queue(signal);
 
 #endif        
 
