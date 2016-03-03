@@ -84,11 +84,8 @@ namespace viennacl
       memset(this_aql, 0, sizeof(hsa_kernel_dispatch_packet_t));
       /*  FIXME: We need to check for queue overflow here. */
 
-	#if defined(VIENNACL_HSA_WAIT_KERNEL)
-      this_aql->completion_signal = signal;
-	#else
-      this_aql->completion_signal = signal;
-	#endif
+	  this_aql->completion_signal = signal;
+
 
       /*  Process lparm values */
       /*  this_aql.dimensions=(uint16_t) lparm->ndim; */
@@ -131,9 +128,11 @@ namespace viennacl
       /*  Prepare and set the packet header */
       this_aql->header |= HSA_FENCE_SCOPE_SYSTEM<< HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE; // scope system - update to define
       this_aql->header |= HSA_FENCE_SCOPE_SYSTEM<< HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE;
+#ifndef VIENNACL_HSA_WAIT_KERNEL
       this_aql->header |= 1 << HSA_PACKET_HEADER_BARRIER; // use ordered execution
-      this_aql->header |= HSA_PACKET_TYPE_KERNEL_DISPATCH;
-      __atomic_store_n((uint8_t*)(&this_aql->header), (uint8_t)(HSA_PACKET_TYPE_KERNEL_DISPATCH | (1 << HSA_PACKET_HEADER_BARRIER)), __ATOMIC_RELEASE);
+#endif
+     // this_aql->header |= HSA_PACKET_TYPE_KERNEL_DISPATCH;
+      __atomic_store_n((uint8_t*)(&this_aql->header), (uint8_t)(HSA_PACKET_TYPE_KERNEL_DISPATCH ), __ATOMIC_RELEASE);
 
       /* Increment write index and ring doorbell to dispatch the kernel.  */
       hsa_queue_store_write_index_relaxed(command_queue, index+1);
@@ -145,7 +144,6 @@ namespace viennacl
       hsa_signal_destroy(signal);
 #else
       const_cast<viennacl::hsa::command_queue&>(queue).dispatch_queue(signal);
-
 #endif        
 
 #if defined(VIENNACL_DEBUG_ALL) || defined(VIENNACL_DEBUG_KERNEL)
